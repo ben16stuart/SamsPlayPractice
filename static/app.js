@@ -266,6 +266,14 @@ function renderRoles() {
   }
 }
 
+function setSongSource(title, url) {
+  const old = state.songFiles.get(title);
+  if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
+  state.songFiles.set(title, url);
+  renderScriptView();
+  if (state.playing) markCurrent(state.index);
+}
+
 function renderSongs() {
   $('songs-block').classList.toggle('hidden', !state.songs.length);
   const list = $('songs-list');
@@ -276,23 +284,81 @@ function renderSongs() {
     const label = document.createElement('span');
     label.className = 'song-title';
     label.textContent = `🎵 ${title}`;
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'audio/*';
+
     const status = document.createElement('span');
     status.className = 'song-status';
-    status.textContent = state.songFiles.has(title) ? 'attached ✔' : 'no file — will be announced instead';
-    input.onchange = () => {
-      const f = input.files[0];
-      if (!f) return;
-      const old = state.songFiles.get(title);
-      if (old) URL.revokeObjectURL(old);
-      state.songFiles.set(title, URL.createObjectURL(f));
-      status.textContent = `attached: ${f.name} ✔`;
+    const setStatus = () => {
+      const src = state.songFiles.get(title);
+      status.textContent = !src ? 'no audio — will be announced instead'
+        : src.startsWith('blob:') ? 'file attached ✔'
+        : `linked ✔ (${src.length > 40 ? src.slice(0, 40) + '…' : src})`;
     };
-    row.append(label, input, status);
+    setStatus();
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'audio/*';
+    fileInput.onchange = () => {
+      const f = fileInput.files[0];
+      if (!f) return;
+      setSongSource(title, URL.createObjectURL(f));
+      urlInput.value = '';
+      setStatus();
+    };
+
+    const urlInput = document.createElement('input');
+    urlInput.type = 'url';
+    urlInput.placeholder = 'or paste a direct audio URL (.mp3/.m4a)…';
+    const src = state.songFiles.get(title);
+    if (src && !src.startsWith('blob:')) urlInput.value = src;
+    urlInput.onchange = () => {
+      const url = urlInput.value.trim();
+      if (!url) return;
+      setSongSource(title, url);
+      fileInput.value = '';
+      setStatus();
+    };
+
+    const preview = document.createElement('button');
+    preview.className = 'preview-btn';
+    preview.textContent = '🔊';
+    preview.title = 'Test this audio (plays a few seconds)';
+    preview.onclick = () => {
+      const src = state.songFiles.get(title);
+      if (!src) { status.textContent = 'nothing attached yet'; return; }
+      const el = new Audio(src);
+      el.play().then(() => setTimeout(() => el.pause(), 4000))
+        .catch(() => { status.textContent = '⚠️ could not play — check the link is a direct audio file'; });
+    };
+
+    row.append(label, fileInput, urlInput, preview, status);
     list.appendChild(row);
   }
+}
+
+// --- inserting / removing song cues in the script ---
+
+function insertSongAfter(i) {
+  const title = prompt('Song name (as it should appear in the script):');
+  if (!title || !title.trim()) return;
+  const clean = title.trim();
+  state.items.splice(i + 1, 0, { type: 'song', title: clean });
+  if (!state.songs.includes(clean)) state.songs.push(clean);
+  if (state.playing && state.index > i) state.index++;
+  renderSongs();
+  renderScriptView();
+  if (state.playing) markCurrent(state.index);
+}
+
+function removeSongAt(i) {
+  const [removed] = state.items.splice(i, 1);
+  if (!state.items.some(x => x.type === 'song' && x.title === removed.title)) {
+    state.songs = state.songs.filter(t => t !== removed.title);
+  }
+  if (state.playing && state.index > i) state.index--;
+  renderSongs();
+  renderScriptView();
+  if (state.playing) markCurrent(state.index);
 }
 
 // ---------------------------------------------------------------------------
@@ -321,13 +387,29 @@ function renderScriptView() {
       }
     } else if (it.type === 'song') {
       who.textContent = '🎵 SONG';
-      what.textContent = it.title + (state.songFiles.has(it.title) ? '' : '  (no audio attached)');
+      what.textContent = it.title + (state.songFiles.get(it.title) ? '' : '  (no audio attached)');
     } else {
       who.textContent = '✧';
       what.textContent = `(${it.text})`;
     }
     div.onclick = () => startFrom(i);
-    div.append(who, what);
+
+    const tools = document.createElement('span');
+    tools.className = 'line-tools';
+    const addBtn = document.createElement('button');
+    addBtn.textContent = '+🎵';
+    addBtn.title = 'Insert music after this line';
+    addBtn.onclick = (e) => { e.stopPropagation(); insertSongAfter(i); };
+    tools.appendChild(addBtn);
+    if (it.type === 'song') {
+      const delBtn = document.createElement('button');
+      delBtn.textContent = '✕';
+      delBtn.title = 'Remove this music cue';
+      delBtn.onclick = (e) => { e.stopPropagation(); removeSongAt(i); };
+      tools.appendChild(delBtn);
+    }
+
+    div.append(who, what, tools);
     view.appendChild(div);
   });
 }

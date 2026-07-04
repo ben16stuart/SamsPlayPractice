@@ -185,6 +185,25 @@ input[type="range"] { accent-color: var(--primary); }
 }
 .song-row .song-title { font-weight: 600; color: var(--gold); }
 .song-row .song-status { color: var(--muted); font-size: 0.8rem; }
+.song-row input[type="url"] {
+  flex: 1; min-width: 220px;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid var(--card-edge); border-radius: 10px;
+  background: #201b2e; color: var(--ink); font-size: 0.85rem;
+}
+
+/* per-line hover tools (insert/remove music cues) */
+.line .line-tools {
+  margin-left: auto; align-self: center;
+  display: flex; gap: 0.25rem;
+  opacity: 0; transition: opacity 0.2s;
+}
+.line:hover .line-tools { opacity: 1; }
+.line-tools button {
+  padding: 0.1rem 0.45rem; font-size: 0.72rem;
+  background: transparent; border-color: var(--card-edge);
+}
+.line-tools button:hover { border-color: var(--gold); box-shadow: none; }
 
 /* ── Transport & progress ── */
 .transport { display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }

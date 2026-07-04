@@ -48,8 +48,11 @@ parser was used.
 
 ## How to use it
 
-1. **Paste the script** (or click **📄 Load from PDF** — the text layer is
-   extracted locally with `pypdf`, no AI or internet needed) and click
+1. **Get the script in.** Paste it, click **📄 Load from PDF** (text layer
+   extracted locally with `pypdf`, no AI needed), or click **📷 Load from
+   photos** for pictures of printed pages — OCR'd with Claude vision when a
+   key is set, or free local Tesseract OCR otherwise (`sudo apt install
+   tesseract-ocr` / `brew install tesseract`). Then click
    **✨ Analyze script & find roles**.
    With an API key set, Claude extracts every role, line, song cue, and stage
    direction from any script format. The fallback pattern parser handles the
@@ -67,9 +70,13 @@ parser was used.
    - **Beep** — a short cue tone, then a pause
    - **Read aloud** — his lines are spoken too (good while first learning)
    - **Skip** — jump straight past
-4. **Attach the songs.** Each detected song cue gets a file slot — attach the
-   mp3/m4a rehearsal track and it plays at that point in the script. With no
-   file attached, the narrator announces the song instead.
+4. **Attach the music.** Each detected song cue gets a slot where you can
+   attach an audio file (mp3/m4a/wav) **or paste a direct audio URL** — it
+   plays at that point in the script (🔊 tests it). Need music somewhere the
+   script has no cue? Hover any line in the teleprompter and click **+🎵** to
+   insert a cue there (✕ on a cue removes it). With no audio attached, the
+   narrator announces the song instead. Note: URLs must point at an actual
+   audio file — YouTube/Spotify page links won't play.
 5. **Rehearse.** Press Play — the teleprompter scrolls through the script,
    spotlighting the current line, with Sam's lines highlighted in gold. Click
    any line to start from there. Turn on **Hide my lines** to blur them and
