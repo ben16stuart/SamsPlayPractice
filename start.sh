@@ -9,7 +9,4 @@ if [ ! -d .venv ]; then
   .venv/bin/pip install --quiet -r requirements.txt
 fi
 
-echo ""
-echo "  🎭 Sam's Play Practice → http://localhost:5000"
-echo ""
 exec .venv/bin/python app.py

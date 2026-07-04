@@ -14,6 +14,7 @@ import io
 import json
 import os
 import re
+import socket
 
 from flask import Flask, jsonify, render_template, request
 
@@ -424,5 +425,22 @@ def api_parse():
     )
 
 
+def pick_port() -> int:
+    """Prefer $PORT or 5000, but skip past ports already in use —
+    on macOS, AirPlay Receiver squats on 5000."""
+    start = int(os.environ.get("PORT", "5000"))
+    for port in range(start, start + 10):
+        with socket.socket() as s:
+            try:
+                s.bind(("127.0.0.1", port))
+            except OSError:
+                print(f"Port {port} is busy (on macOS this is usually AirPlay Receiver) — trying {port + 1}")
+                continue
+        return port
+    raise SystemExit(f"No free port found between {start} and {start + 9}")
+
+
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=True)
+    port = pick_port()
+    print(f"\n  🎭 Sam's Play Practice → http://localhost:{port}\n")
+    app.run(host="127.0.0.1", port=port, debug=False)

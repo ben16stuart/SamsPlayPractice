@@ -22,7 +22,23 @@ python3 -m venv .venv
 .venv/bin/python app.py
 ```
 
-Then open **http://localhost:5000** in Chrome or Edge (best voice support).
+Then open the URL it prints — normally **http://localhost:5000** — in Chrome
+or Edge (best voice support). If port 5000 is taken the app hops to the next
+free port and prints that instead. Set `PORT` to choose one explicitly.
+
+### Running on a Mac
+
+Works out of the box — `./start.sh` needs only `python3`, which macOS offers
+to install automatically (via the Xcode Command Line Tools) the first time you
+run it. Mac-specific notes:
+
+- **Port 5000:** macOS's AirPlay Receiver listens on port 5000, so the app
+  will usually start on 5001 there (it tells you). To free 5000 instead:
+  System Settings → General → AirDrop & Handoff → turn off AirPlay Receiver.
+- **Voices:** macOS ships excellent system voices, and Safari works too
+  (Chrome recommended). Add more voices in System Settings → Accessibility →
+  Spoken Content → System Voice → Manage Voices.
+- **Photo OCR without an API key:** `brew install tesseract`.
 
 ### Enable AI script parsing (recommended)
 
