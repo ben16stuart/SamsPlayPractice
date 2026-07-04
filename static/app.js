@@ -130,8 +130,8 @@ const state = {
   waitResolve: null,         // resolver for "wait for me" mode
 };
 
-const ROLE_COLORS = ['#8b5cf6', '#06b6d4', '#f43f5e', '#10b981', '#f59e0b',
-  '#ec4899', '#6366f1', '#84cc16', '#a855f7', '#14b8a6', '#ef4444', '#3b82f6'];
+const ROLE_COLORS = ['#3b82f6', '#ef4444', '#0ea5e9', '#e11d48', '#14b8a6',
+  '#f97316', '#6366f1', '#84cc16', '#06b6d4', '#f59e0b', '#ec4899', '#10b981'];
 
 const $ = (id) => document.getElementById(id);
 

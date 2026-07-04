@@ -1,20 +1,20 @@
-/* ── A night at the theater ─────────────────────────────────────────── */
+/* ── A night at the theater — red, white & blue ─────────────────────── */
 
 :root {
-  --bg: #0d0b14;
-  --bg-glow: radial-gradient(ellipse 80% 50% at 50% -10%, #2a1a4a 0%, transparent 60%);
-  --card: #17141f;
-  --card-edge: #2c2640;
-  --ink: #f0ecff;
-  --muted: #9a92b8;
-  --gold: #f5c542;
-  --gold-dim: #8a6d1d;
-  --primary: #8b5cf6;
-  --primary-deep: #6d28d9;
+  --bg: #0a0e1a;
+  --bg-glow: radial-gradient(ellipse 80% 50% at 50% -10%, #16264a 0%, transparent 60%);
+  --card: #121a2b;
+  --card-edge: #253552;
+  --ink: #f4f7fc;
+  --muted: #92a2c0;
+  --red: #ef4444;
+  --red-soft: #f87171;
+  --red-dim: #7f2020;
+  --primary: #3b82f6;
+  --primary-deep: #1d4ed8;
   --accent: #10b981;
-  --danger: #ef4444;
-  --mine: rgba(245, 197, 66, 0.12);
-  --mine-border: rgba(245, 197, 66, 0.55);
+  --mine: rgba(239, 68, 68, 0.12);
+  --mine-border: rgba(239, 68, 68, 0.55);
   --radius: 14px;
 }
 
@@ -36,23 +36,30 @@ body {
   text-align: center;
   padding: 1.75rem 1rem 1.25rem;
   border-bottom: 1px solid var(--card-edge);
-  background: linear-gradient(180deg, rgba(139, 92, 246, 0.10), transparent);
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.10), transparent);
 }
 .marquee h1 {
   margin: 0.5rem 0 0.15rem;
   font-size: clamp(1.5rem, 4vw, 2.4rem);
   letter-spacing: 0.12em;
-  color: var(--gold);
-  text-shadow: 0 0 18px rgba(245, 197, 66, 0.45), 0 0 60px rgba(245, 197, 66, 0.15);
+  color: #ffffff;
+  text-shadow:
+    0 0 14px rgba(239, 68, 68, 0.55),
+    0 0 40px rgba(59, 130, 246, 0.45),
+    0 0 80px rgba(59, 130, 246, 0.2);
 }
 .tagline { color: var(--muted); margin: 0.25rem 0 0.6rem; letter-spacing: 0.04em; }
 
+/* alternating red / white / blue marquee bulbs */
 .bulbs {
   height: 10px;
   margin: 0 auto;
   max-width: 560px;
-  background-image: radial-gradient(circle 4px, var(--gold) 35%, rgba(245,197,66,0.25) 60%, transparent 70%);
-  background-size: 28px 10px;
+  background-image:
+    radial-gradient(circle 4px at 14px 5px, var(--red) 35%, rgba(239, 68, 68, 0.25) 60%, transparent 70%),
+    radial-gradient(circle 4px at 42px 5px, #ffffff 35%, rgba(255, 255, 255, 0.25) 60%, transparent 70%),
+    radial-gradient(circle 4px at 70px 5px, var(--primary) 35%, rgba(59, 130, 246, 0.25) 60%, transparent 70%);
+  background-size: 84px 10px;
   background-position: center;
   background-repeat: repeat-x;
   animation: twinkle 1.6s ease-in-out infinite alternate;
@@ -89,7 +96,7 @@ summary::after {
 }
 details:not([open]) summary::after { transform: rotate(-90deg); }
 details[open] summary { margin-bottom: 0.9rem; }
-summary:hover::after { color: var(--gold); }
+summary:hover::after { color: var(--red-soft); }
 
 /* performing mode — collapse the chrome, the script is the star */
 body.performing .marquee { padding: 0.5rem 1rem 0.4rem; }
@@ -98,14 +105,15 @@ body.performing .marquee .tagline { display: none; }
 body.performing .marquee h1 { font-size: 1.05rem; margin: 0; }
 body.performing .teleprompter { height: 74vh; }
 body.performing main { padding-top: 0.75rem; }
-h3 { font-size: 0.95rem; margin: 1.4rem 0 0.6rem; color: var(--gold); letter-spacing: 0.05em; }
+
+h3 { font-size: 0.95rem; margin: 1.4rem 0 0.6rem; color: var(--red-soft); letter-spacing: 0.05em; }
 
 .step {
   display: inline-flex; align-items: center; justify-content: center;
   width: 1.7em; height: 1.7em; margin-right: 0.45em;
   background: linear-gradient(135deg, var(--primary), var(--primary-deep));
   color: #fff; border-radius: 50%; font-size: 0.85em;
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.5);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.5);
 }
 
 .hint { color: var(--muted); font-weight: normal; font-size: 0.82rem; letter-spacing: 0; }
@@ -119,7 +127,7 @@ textarea {
   font-size: 0.88rem;
   border: 1px solid var(--card-edge);
   border-radius: 10px;
-  background: #0f0d17;
+  background: #0b101d;
   color: var(--ink);
   resize: vertical;
 }
@@ -136,13 +144,13 @@ button {
   padding: 0.55rem 1.15rem;
   border: 1px solid var(--card-edge);
   border-radius: 10px;
-  background: #201b2e;
+  background: #1a2337;
   color: var(--ink);
   font-size: 0.95rem;
   cursor: pointer;
   transition: transform 0.08s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-button:hover:not(:disabled) { border-color: var(--primary); box-shadow: 0 0 14px rgba(139, 92, 246, 0.35); }
+button:hover:not(:disabled) { border-color: var(--primary); box-shadow: 0 0 14px rgba(59, 130, 246, 0.35); }
 button:active:not(:disabled) { transform: scale(0.97); }
 button:disabled { opacity: 0.4; cursor: default; }
 button.primary {
@@ -159,20 +167,20 @@ select, input[type="file"] {
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--card-edge);
   border-radius: 10px;
-  background: #201b2e;
+  background: #1a2337;
   color: var(--ink);
   font-size: 0.9rem;
 }
 input[type="range"] { accent-color: var(--primary); }
 .check { display: flex; align-items: center; gap: 0.45rem; font-size: 0.9rem; color: var(--ink); }
-.check input { accent-color: var(--gold); }
+.check input { accent-color: var(--red); }
 
 .notice {
   margin-top: 0.9rem;
   padding: 0.65rem 1rem;
   border-radius: 10px;
-  background: rgba(139, 92, 246, 0.14);
-  border: 1px solid rgba(139, 92, 246, 0.35);
+  background: rgba(59, 130, 246, 0.14);
+  border: 1px solid rgba(59, 130, 246, 0.35);
   font-size: 0.9rem;
 }
 
@@ -187,7 +195,7 @@ input[type="range"] { accent-color: var(--primary); }
   padding: 0.55rem 0.75rem;
   border: 1px solid var(--card-edge);
   border-radius: 10px;
-  background: #1b1726;
+  background: #151e33;
 }
 .role-row select { flex: 1; min-width: 0; }
 .role-badge {
@@ -207,15 +215,15 @@ input[type="range"] { accent-color: var(--primary); }
 .song-row {
   display: flex; align-items: center; gap: 0.8rem; flex-wrap: wrap;
   padding: 0.55rem 0.8rem; margin-bottom: 0.45rem;
-  border: 1px dashed var(--gold-dim); border-radius: 10px;
+  border: 1px dashed var(--red-dim); border-radius: 10px;
 }
-.song-row .song-title { font-weight: 600; color: var(--gold); }
+.song-row .song-title { font-weight: 600; color: var(--red-soft); }
 .song-row .song-status { color: var(--muted); font-size: 0.8rem; }
 .song-row input[type="url"] {
   flex: 1; min-width: 220px;
   padding: 0.45rem 0.55rem;
   border: 1px solid var(--card-edge); border-radius: 10px;
-  background: #201b2e; color: var(--ink); font-size: 0.85rem;
+  background: #1a2337; color: var(--ink); font-size: 0.85rem;
 }
 
 /* per-line hover tools (insert/remove music cues) */
@@ -229,17 +237,17 @@ input[type="range"] { accent-color: var(--primary); }
   padding: 0.1rem 0.45rem; font-size: 0.72rem;
   background: transparent; border-color: var(--card-edge);
 }
-.line-tools button:hover { border-color: var(--gold); box-shadow: none; }
+.line-tools button:hover { border-color: var(--red-soft); box-shadow: none; }
 
 /* ── Transport & progress ── */
 .transport { display: flex; gap: 0.55rem; flex-wrap: wrap; align-items: center; }
 .progress {
   height: 6px; margin: 0.9rem 0 0.3rem;
-  background: #0f0d17; border-radius: 3px; overflow: hidden;
+  background: #0b101d; border-radius: 3px; overflow: hidden;
 }
 #progress-fill {
   height: 100%; width: 0%;
-  background: linear-gradient(90deg, var(--primary), var(--gold));
+  background: linear-gradient(90deg, var(--primary), #ffffff, var(--red));
   transition: width 0.3s ease;
 }
 
@@ -252,8 +260,8 @@ input[type="range"] { accent-color: var(--primary); }
   border: 1px solid var(--card-edge);
   border-radius: 12px;
   background:
-    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(139, 92, 246, 0.08), transparent 70%),
-    #0f0d17;
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(59, 130, 246, 0.08), transparent 70%),
+    #0b101d;
   scroll-behavior: smooth;
   padding: 24vh 1.2rem;
 }
@@ -261,8 +269,8 @@ input[type="range"] { accent-color: var(--primary); }
   position: sticky; left: 0; right: 0; height: 70px; z-index: 2;
   pointer-events: none;
 }
-.prompter-fade.top { top: -24.5vh; margin-top: -24vh; background: linear-gradient(180deg, #0f0d17 15%, transparent); }
-.prompter-fade.bottom { bottom: -24.5vh; margin-bottom: -24vh; background: linear-gradient(0deg, #0f0d17 15%, transparent); }
+.prompter-fade.top { top: -24.5vh; margin-top: -24vh; background: linear-gradient(180deg, #0b101d 15%, transparent); }
+.prompter-fade.bottom { bottom: -24.5vh; margin-bottom: -24vh; background: linear-gradient(0deg, #0b101d 15%, transparent); }
 
 .line {
   display: flex; gap: 0.9rem;
@@ -284,21 +292,21 @@ input[type="range"] { accent-color: var(--primary); }
 }
 .line .what { flex: 1; font-size: 1.02rem; }
 .line.direction .what { color: var(--muted); font-style: italic; }
-.line.song .what { font-weight: 700; color: var(--gold); }
+.line.song .what { font-weight: 700; color: var(--red-soft); }
 .line.mine { background: var(--mine); border-color: var(--mine-border); }
 
 .line.current {
   opacity: 1;
   transform: scale(1.03);
-  background: rgba(139, 92, 246, 0.14);
+  background: rgba(59, 130, 246, 0.14);
   border-color: var(--primary);
-  box-shadow: 0 0 24px rgba(139, 92, 246, 0.35), 0 0 80px rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 24px rgba(59, 130, 246, 0.35), 0 0 80px rgba(59, 130, 246, 0.12);
 }
 .line.current .what { font-size: 1.15rem; }
 .line.mine.current {
   background: var(--mine);
-  border-color: var(--gold);
-  box-shadow: 0 0 24px rgba(245, 197, 66, 0.4), 0 0 80px rgba(245, 197, 66, 0.14);
+  border-color: var(--red);
+  box-shadow: 0 0 24px rgba(239, 68, 68, 0.4), 0 0 80px rgba(239, 68, 68, 0.14);
 }
 .line .what.masked { filter: blur(7px); transition: filter 0.2s; }
 .line .what.masked:hover { filter: none; }
