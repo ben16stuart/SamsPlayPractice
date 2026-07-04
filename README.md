@@ -24,10 +24,34 @@ python3 -m venv .venv
 
 Then open **http://localhost:5000** in Chrome or Edge (best voice support).
 
+### Enable AI script parsing (recommended)
+
+Real scripts are messy — inconsistent formatting, OCR'd pages, unusual layouts.
+With an Anthropic API key set, the script analysis is done by **Claude**
+(structured outputs guarantee valid results), which handles any format and
+normalizes character names automatically:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...   # get one at https://platform.claude.com
+./start.sh
+```
+
+Without a key the app automatically falls back to the built-in pattern parser
+(which handles standard `NAME: line` formats), and the page tells you which
+parser was used.
+
+- Model: `claude-opus-4-8` by default; override with `CLAUDE_PARSER_MODEL`.
+- Cost: parsing is a one-time call per script — a full school-play script is
+  typically a few cents ($5/M input, $25/M output tokens for Opus 4.8).
+- The script text goes to the Anthropic API for parsing only; speech and song
+  audio still never leave the browser.
+
 ## How to use it
 
 1. **Paste the script** and click **✨ Analyze script & find roles**.
-   The Flask backend parses the common script formats:
+   With an API key set, Claude extracts every role, line, song cue, and stage
+   direction from any script format. The fallback pattern parser handles the
+   common conventions:
    - `SAM: I can't believe it's opening night!`
    - Character name (ALL CAPS) on its own line, dialogue below it
    - Stage directions in `(parentheses)` or `[brackets]`
@@ -79,7 +103,8 @@ voices, free, private, zero install.
 
 - **`app.py`** — Flask server. `GET /` serves the page; `POST /api/parse` runs
   the script analysis (role detection, song cues, stage directions) and returns
-  structured JSON.
+  structured JSON. Uses Claude with a strict JSON schema when
+  `ANTHROPIC_API_KEY` is set, with the heuristic parser as automatic fallback.
 - **`static/app.js`** — the teleprompter, playback engine, and both TTS engines.
   Speech and song audio never leave the browser.
 - **`templates/index.html`**, **`static/styles.css`** — the marquee-and-spotlight UI.
@@ -88,4 +113,4 @@ voices, free, private, zero install.
 
 - Chrome/Edge recommended. Firefox and Safari work with Browser voices; Kokoro needs a modern browser.
 - Kokoro's model downloads from Hugging Face on first use and is cached by the browser afterward.
-- Role detection is heuristic and runs locally (no API key needed). If a role is missed, make sure the character's name is in CAPS followed by a colon or on its own line.
+- Without an API key, role detection is heuristic and runs fully locally. If a role is missed, make sure the character's name is in CAPS followed by a colon or on its own line — or set `ANTHROPIC_API_KEY` and let Claude handle it.

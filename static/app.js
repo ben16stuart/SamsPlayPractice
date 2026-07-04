@@ -146,19 +146,31 @@ function roleColor(role) {
 
 async function analyzeScript() {
   const text = $('script-input').value;
+  const btn = $('parse-btn');
+  btn.disabled = true;
+  btn.textContent = '🎩 Reading the script…';
   let data;
   try {
     const res = await fetch('/api/parse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ script: text }),
+      body: JSON.stringify({ script: text, use_ai: true }),
     });
     if (!res.ok) throw new Error(`server returned ${res.status}`);
     data = await res.json();
   } catch (e) {
     alert(`Could not analyze the script (${e.message}). Is the Flask server running?`);
     return;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '✨ Analyze script & find roles';
   }
+
+  const status = $('parse-status');
+  status.classList.remove('hidden');
+  status.textContent = data.parser === 'ai'
+    ? '✨ Cast, songs, and lines extracted by Claude AI.'
+    : `🔍 Parsed with the pattern parser. ${data.note || ''}`;
 
   state.items = data.items;
   state.roles = data.roles;

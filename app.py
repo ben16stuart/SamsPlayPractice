@@ -3,11 +3,22 @@
 Serves the rehearsal interface and does the script analysis server-side:
 POST /api/parse takes raw script text and returns structured items
 (dialogue / song cues / stage directions), the detected cast, and songs.
+
+Parsing is done by Claude (structured outputs) when an Anthropic API key is
+configured; otherwise a heuristic pattern parser handles standard script
+formats. Set ANTHROPIC_API_KEY to enable AI parsing.
 """
 
+import json
+import os
 import re
 
 from flask import Flask, jsonify, render_template, request
+
+try:
+    import anthropic
+except ImportError:  # AI parsing optional — heuristic parser still works
+    anthropic = None
 
 app = Flask(__name__)
 
@@ -122,6 +133,107 @@ def parse_script(raw: str) -> list[dict]:
     return items
 
 
+# ---------------------------------------------------------------------------
+# AI parsing (Claude with structured outputs)
+# ---------------------------------------------------------------------------
+
+PARSER_MODEL = os.environ.get("CLAUDE_PARSER_MODEL", "claude-opus-4-8")
+
+PARSE_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "items": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string", "enum": ["dialogue", "song", "direction"]},
+                    "role": {
+                        "type": "string",
+                        "description": "Character name in UPPERCASE for dialogue items; empty string otherwise",
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "Verbatim dialogue or stage-direction text; empty string for songs",
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "Song title for song items; empty string otherwise",
+                    },
+                },
+                "required": ["type", "role", "text", "title"],
+                "additionalProperties": False,
+            },
+        }
+    },
+    "required": ["items"],
+    "additionalProperties": False,
+}
+
+PARSE_SYSTEM = """\
+You extract the structure of theater/musical scripts so an app can read them aloud.
+
+Given a script in any format (colon-style "NAME: line", name-on-its-own-line, screenplay \
+style, inconsistent capitalization, OCR'd text, etc.), return every element in order as items:
+
+- "dialogue": one item per speech. "role" is the character name, normalized to UPPERCASE and \
+consistent across the script (e.g. "Mrs Banks", "MRS. BANKS", and "Mrs. Banks (crying)" are \
+all the role "MRS. BANKS"). Group speeches like "ALL" or "SAM & DOROTHY" keep that combined \
+name as the role. "text" is the spoken line verbatim, including inline (parentheticals).
+- "song": a musical number cue. "title" is the song title. If lyrics follow a song cue and \
+are clearly part of the number, you may omit them or keep them as dialogue sung by the \
+named character(s) — prefer keeping character-attributed sung lines as dialogue.
+- "direction": stage directions, scene headings (ACT I, SCENE 2), and any other non-spoken text.
+
+Do not invent, merge, reorder, paraphrase, or drop lines. Preserve the original wording exactly."""
+
+
+def ai_available() -> bool:
+    return anthropic is not None and bool(
+        os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")
+    )
+
+
+def ai_parse_script(raw: str) -> list[dict]:
+    """Parse the script with Claude. Returns items in the same shape as
+    parse_script(). Raises on any API/parsing failure (caller falls back)."""
+    client = anthropic.Anthropic()
+    # Stream so long scripts (large JSON responses) don't hit HTTP timeouts.
+    with client.messages.stream(
+        model=PARSER_MODEL,
+        max_tokens=64000,
+        thinking={"type": "adaptive"},
+        system=PARSE_SYSTEM,
+        output_config={"format": {"type": "json_schema", "schema": PARSE_SCHEMA}},
+        messages=[{"role": "user", "content": raw}],
+    ) as stream:
+        response = stream.get_final_message()
+
+    if response.stop_reason == "refusal":
+        raise RuntimeError("the model declined to process this text")
+    if response.stop_reason == "max_tokens":
+        raise RuntimeError("script too long for a single AI parse")
+
+    text = next(b.text for b in response.content if b.type == "text")
+    items = []
+    for it in json.loads(text)["items"]:
+        if it["type"] == "dialogue" and it["role"].strip() and it["text"].strip():
+            display = re.sub(r"\s+", " ", it["text"].strip())
+            items.append({
+                "type": "dialogue",
+                "role": normalize_role(it["role"]),
+                "display": display,
+                "speak": re.sub(r"\s+", " ", PARENTHETICAL.sub(" ", display)).strip(),
+            })
+        elif it["type"] == "song" and it["title"].strip():
+            items.append({"type": "song", "title": it["title"].strip()})
+        elif it["type"] == "direction" and it["text"].strip():
+            items.append({"type": "direction", "text": it["text"].strip()})
+    if not items:
+        raise RuntimeError("AI returned no script items")
+    return items
+
+
 @app.get("/")
 def index():
     return render_template("index.html")
@@ -131,7 +243,21 @@ def index():
 def api_parse():
     data = request.get_json(silent=True) or {}
     text = data.get("script", "")
-    items = parse_script(text)
+    use_ai = data.get("use_ai", True)
+
+    parser = "heuristic"
+    note = ""
+    items = None
+    if use_ai and ai_available():
+        try:
+            items = ai_parse_script(text)
+            parser = "ai"
+        except Exception as e:  # noqa: BLE001 — any AI failure falls back
+            note = f"AI parse failed ({e}); used the pattern parser instead."
+    elif use_ai:
+        note = "Set ANTHROPIC_API_KEY to enable AI parsing; used the pattern parser."
+    if items is None:
+        items = parse_script(text)
 
     counts: dict[str, int] = {}
     for it in items:
@@ -143,7 +269,9 @@ def api_parse():
     )
     songs = list(dict.fromkeys(it["title"] for it in items if it["type"] == "song"))
 
-    return jsonify({"items": items, "roles": roles, "songs": songs})
+    return jsonify(
+        {"items": items, "roles": roles, "songs": songs, "parser": parser, "note": note}
+    )
 
 
 if __name__ == "__main__":
