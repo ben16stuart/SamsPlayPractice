@@ -189,6 +189,7 @@ async function analyzeScript() {
   autoAssignVoices();
   renderMyRoleSelect();
   renderRoles();
+  await loadSavedSongs();
   renderSongs();
   renderScriptView();
   $('setup-section').classList.remove('hidden');
@@ -268,6 +269,24 @@ function renderRoles() {
   }
 }
 
+// --- persistent music library (saved per show on the server) ---
+
+const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'untitled';
+const playName = () => $('play-name').value.trim() || 'my-play';
+const YOUTUBE_RE = /^(https?:\/\/)?(www\.|m\.|music\.)?(youtube\.com|youtu\.be)\//i;
+
+async function loadSavedSongs() {
+  try {
+    const res = await fetch(`/api/songs?play=${encodeURIComponent(playName())}`);
+    const data = await res.json();
+    const byStem = new Map((data.songs || []).map(s => [s.stem, s.url]));
+    for (const title of state.songs) {
+      const url = byStem.get(slug(title));
+      if (url) state.songFiles.set(title, url);
+    }
+  } catch { /* offline server list is best-effort */ }
+}
+
 function setSongSource(title, url) {
   const old = state.songFiles.get(title);
   if (old && old.startsWith('blob:')) URL.revokeObjectURL(old);
@@ -289,10 +308,12 @@ function renderSongs() {
 
     const status = document.createElement('span');
     status.className = 'song-status';
-    const setStatus = () => {
+    const setStatus = (msg) => {
+      if (msg) { status.textContent = msg; return; }
       const src = state.songFiles.get(title);
       status.textContent = !src ? 'no audio — will be announced instead'
-        : src.startsWith('blob:') ? 'file attached ✔'
+        : src.startsWith('blob:') ? 'file attached (this session only)'
+        : src.startsWith('/media/') ? `saved for this show ✔ (${src.split('/').pop()})`
         : `linked ✔ (${src.length > 40 ? src.slice(0, 40) + '…' : src})`;
     };
     setStatus();
@@ -300,24 +321,54 @@ function renderSongs() {
     const fileInput = document.createElement('input');
     fileInput.type = 'file';
     fileInput.accept = 'audio/*';
-    fileInput.onchange = () => {
+    fileInput.onchange = async () => {
       const f = fileInput.files[0];
       if (!f) return;
-      setSongSource(title, URL.createObjectURL(f));
       urlInput.value = '';
+      setStatus(`saving ${f.name}…`);
+      const form = new FormData();
+      form.append('audio', f);
+      form.append('play', playName());
+      form.append('title', title);
+      try {
+        const res = await fetch('/api/upload_song', { method: 'POST', body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        setSongSource(title, data.url);
+      } catch {
+        setSongSource(title, URL.createObjectURL(f)); // still usable this session
+      }
       setStatus();
     };
 
     const urlInput = document.createElement('input');
     urlInput.type = 'url';
-    urlInput.placeholder = 'or paste a direct audio URL (.mp3/.m4a)…';
+    urlInput.placeholder = 'or paste a YouTube link / direct audio URL…';
     const src = state.songFiles.get(title);
-    if (src && !src.startsWith('blob:')) urlInput.value = src;
-    urlInput.onchange = () => {
+    if (src && !src.startsWith('blob:') && !src.startsWith('/media/')) urlInput.value = src;
+    urlInput.onchange = async () => {
       const url = urlInput.value.trim();
       if (!url) return;
-      setSongSource(title, url);
       fileInput.value = '';
+      if (YOUTUBE_RE.test(url)) {
+        setStatus('⬇️ downloading audio from YouTube — this can take a minute…');
+        try {
+          const res = await fetch('/api/download_song', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, play: playName(), title }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || `server returned ${res.status}`);
+          setSongSource(title, data.url);
+          urlInput.value = '';
+          setStatus();
+        } catch (e) {
+          setStatus(`⚠️ ${e.message}`);
+        }
+        return;
+      }
+      setSongSource(title, url);
       setStatus();
     };
 
@@ -660,6 +711,18 @@ $('engine-select').onchange = async () => {
 
 $('my-role-select').onchange = () => {
   state.myRole = $('my-role-select').value;
+  renderScriptView();
+};
+
+$('play-name').value = localStorage.getItem('playName') || '';
+$('play-name').onchange = async () => {
+  localStorage.setItem('playName', $('play-name').value.trim());
+  // Drop attachments saved under the previous show, then load this show's
+  for (const [title, src] of [...state.songFiles]) {
+    if (src.startsWith('/media/')) state.songFiles.delete(title);
+  }
+  await loadSavedSongs();
+  renderSongs();
   renderScriptView();
 };
 

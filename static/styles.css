@@ -163,6 +163,9 @@ button.big { font-size: 1.05rem; padding: 0.7rem 1.6rem; }
 .field { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.82rem; color: var(--muted); }
 .field select, .field input[type="range"] { min-width: 230px; }
 .field.slim select, .field.slim input[type="range"] { min-width: 160px; }
+.play-name-field { margin-bottom: 0.7rem; }
+.play-name-field input { max-width: 320px; }
+input[type="text"],
 select, input[type="file"] {
   padding: 0.5rem 0.55rem;
   border: 1px solid var(--card-edge);

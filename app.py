@@ -15,13 +15,20 @@ import json
 import os
 import re
 import socket
+from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
+from werkzeug.utils import secure_filename
 
 try:
     import anthropic
 except ImportError:  # AI parsing optional — heuristic parser still works
     anthropic = None
+
+try:
+    from yt_dlp import YoutubeDL
+except ImportError:
+    YoutubeDL = None
 
 from pypdf import PdfReader
 
@@ -276,6 +283,99 @@ def ai_transcribe(blocks: list[dict]) -> str:
     if not text:
         raise RuntimeError("no text recognized")
     return text
+
+
+# ---------------------------------------------------------------------------
+# Music library — persistent, one folder per play under media/
+# ---------------------------------------------------------------------------
+
+MEDIA_DIR = Path(__file__).resolve().parent / "media"
+
+
+def slugify(name: str) -> str:
+    """Filesystem-safe name, identical to the client-side slug() in app.js."""
+    return re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") or "untitled"
+
+
+def play_dir(play: str) -> Path:
+    d = MEDIA_DIR / slugify(play)
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def song_entry(play_slug: str, f: Path) -> dict:
+    return {"stem": f.stem, "url": f"/media/{play_slug}/{f.name}"}
+
+
+@app.get("/media/<play>/<name>")
+def media(play: str, name: str):
+    # Only serve names we could have written ourselves
+    if slugify(play) != play or secure_filename(name) != name:
+        return jsonify({"error": "not found"}), 404
+    return send_from_directory(MEDIA_DIR / play, name)
+
+
+@app.get("/api/songs")
+def api_songs():
+    """List the saved songs for a play so the UI can re-attach them."""
+    play = slugify(request.args.get("play", ""))
+    d = MEDIA_DIR / play
+    if not d.is_dir():
+        return jsonify({"songs": []})
+    return jsonify({"songs": [song_entry(play, f) for f in sorted(d.iterdir()) if f.is_file()]})
+
+
+@app.post("/api/upload_song")
+def api_upload_song():
+    """Save an uploaded audio file into the play's folder (persistent)."""
+    file = request.files.get("audio")
+    play = request.form.get("play", "")
+    title = request.form.get("title", "")
+    if file is None or not title.strip():
+        return jsonify({"error": "audio file and title required"}), 400
+    ext = Path(secure_filename(file.filename or "")).suffix or ".mp3"
+    d = play_dir(play)
+    stem = slugify(title)
+    for old in d.glob(f"{stem}.*"):
+        old.unlink()
+    dest = d / f"{stem}{ext}"
+    file.save(dest)
+    return jsonify(song_entry(d.name, dest))
+
+
+@app.post("/api/download_song")
+def api_download_song():
+    """Download a YouTube (or other yt-dlp-supported) link's audio into the
+    play's folder. Keeps the native audio container so ffmpeg isn't needed."""
+    if YoutubeDL is None:
+        return jsonify({"error": "yt-dlp is not installed (pip install yt-dlp)"}), 501
+    data = request.get_json(silent=True) or {}
+    url = (data.get("url") or "").strip()
+    play = data.get("play", "")
+    title = (data.get("title") or "").strip()
+    if not url or not title:
+        return jsonify({"error": "url and title required"}), 400
+
+    d = play_dir(play)
+    stem = slugify(title)
+    for old in d.glob(f"{stem}.*"):
+        old.unlink()
+    opts = {
+        "format": "bestaudio[ext=m4a]/bestaudio/best",
+        "outtmpl": str(d / f"{stem}.%(ext)s"),
+        "noplaylist": True,
+        "quiet": True,
+        "no_warnings": True,
+    }
+    try:
+        with YoutubeDL(opts) as ydl:
+            info = ydl.extract_info(url, download=True)
+            dest = Path(ydl.prepare_filename(info))
+    except Exception as e:  # noqa: BLE001 — geo-blocks, bad URLs, age gates…
+        return jsonify({"error": f"download failed: {e}"}), 422
+    if not dest.exists():
+        return jsonify({"error": "download produced no file"}), 422
+    return jsonify(song_entry(d.name, dest))
 
 
 @app.get("/")

@@ -86,13 +86,16 @@ parser was used.
    - **Beep** — a short cue tone, then a pause
    - **Read aloud** — his lines are spoken too (good while first learning)
    - **Skip** — jump straight past
-4. **Attach the music.** Each detected song cue gets a slot where you can
-   attach an audio file (mp3/m4a/wav) **or paste a direct audio URL** — it
-   plays at that point in the script (🔊 tests it). Need music somewhere the
-   script has no cue? Hover any line in the teleprompter and click **+🎵** to
-   insert a cue there (✕ on a cue removes it). With no audio attached, the
-   narrator announces the song instead. Note: URLs must point at an actual
-   audio file — YouTube/Spotify page links won't play.
+4. **Attach the music.** Set the **Show name**, then for each cue either
+   attach an audio file, **paste a YouTube link** (the audio is downloaded
+   with `yt-dlp` and saved locally), or paste a direct audio URL. 🔊 tests it.
+   Files and YouTube downloads are stored on this computer under
+   `media/<show name>/<song>.<ext>` — **they persist**, and the next time you
+   analyze a script with the same show name they re-attach automatically.
+   Need music somewhere the script has no cue? Hover any line in the
+   teleprompter and click **+🎵** to insert a cue there (✕ removes it). With
+   no audio attached, the narrator announces the song instead. Only download
+   music you have the rights to use for rehearsal.
 5. **Rehearse.** Press Play — the teleprompter scrolls through the script,
    spotlighting the current line, with Sam's lines highlighted in gold. Click
    any line to start from there. Turn on **Hide my lines** to blur them and
@@ -130,6 +133,9 @@ voices, free, private, zero install.
   the script analysis (role detection, song cues, stage directions) and returns
   structured JSON. Uses Claude with a strict JSON schema when
   `ANTHROPIC_API_KEY` is set, with the heuristic parser as automatic fallback.
+  Also hosts the persistent music library: `/api/download_song` (yt-dlp),
+  `/api/upload_song`, `/api/songs`, and `/media/<show>/<file>` serving from
+  the `media/` folder (one subfolder per show; gitignored).
 - **`static/app.js`** — the teleprompter, playback engine, and both TTS engines.
   Speech and song audio never leave the browser.
 - **`templates/index.html`**, **`static/styles.css`** — the marquee-and-spotlight UI.
