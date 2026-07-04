@@ -187,6 +187,28 @@ input[type="range"] { accent-color: var(--primary); }
   font-size: 0.9rem;
 }
 
+/* ── Home: your shows ── */
+.shows-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0.65rem;
+  margin-bottom: 1rem;
+}
+.show-card {
+  display: flex; flex-direction: column; gap: 0.35rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--card-edge);
+  border-radius: 12px;
+  background: #151e33;
+}
+.show-card .show-name { font-weight: 700; font-size: 1rem; }
+.show-card .show-meta { color: var(--muted); font-size: 0.78rem; }
+.show-card .show-actions { display: flex; gap: 0.4rem; margin-top: 0.35rem; }
+.show-card .show-actions button { padding: 0.3rem 0.8rem; font-size: 0.85rem; }
+.show-card .delete-btn { margin-left: auto; border-color: transparent; color: var(--muted); }
+.show-card .delete-btn:hover { border-color: var(--red); color: var(--red-soft); box-shadow: none; }
+.shows-empty { color: var(--muted); font-size: 0.9rem; padding: 0.4rem 0; }
+
 /* ── Cast grid ── */
 .roles-grid {
   display: grid;

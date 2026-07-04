@@ -64,11 +64,13 @@ parser was used.
 
 ## How to use it
 
-0. **Name the show.** Everything — script, cast, voice choices, settings,
-   music, and your current position — is autosaved per show under `media/`
-   as you work. Come back later (or after a restart), pick the show from the
-   Show name field's dropdown, and the whole session is restored, ready to
-   resume from the exact line you left off.
+0. **Start or resume from the home screen.** The app opens on **Your shows**:
+   every saved show appears as a card with its progress (lines, current
+   position, songs, last saved) and a **▶ Resume** button that restores the
+   whole session — script, cast, voices, settings, music, and the exact line
+   you left off at. Or type a name and **➕ Start** a new show. Everything is
+   autosaved per show under `media/` as you work; 🗑 deletes a show and its
+   music.
 1. **Get the script in.** Paste it, click **📄 Load from PDF** (text layer
    extracted locally with `pypdf`, no AI needed), or click **📷 Load from
    photos** for pictures of printed pages — OCR'd with Claude vision when a

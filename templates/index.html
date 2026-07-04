@@ -17,8 +17,23 @@
 </header>
 
 <main>
+  <!-- ============ HOME: START OR RESUME ============ -->
+  <section id="home-section" class="card">
+    <details id="home-details" open>
+    <summary><h2>🎬 Your shows</h2></summary>
+    <div id="shows-list" class="shows-grid"></div>
+    <div class="row wrap">
+      <label class="field">
+        Start a new show
+        <input type="text" id="new-play-name" placeholder="e.g. The Wizard of Oz" maxlength="60">
+      </label>
+      <button id="new-play-btn" class="primary">➕ Start</button>
+    </div>
+    </details>
+  </section>
+
   <!-- ============ STEP 1: SCRIPT INPUT ============ -->
-  <section id="input-section" class="card">
+  <section id="input-section" class="card hidden">
     <details id="input-details" open>
     <summary><h2><span class="step">1</span> Paste the script</h2></summary>
     <label class="field play-name-field">

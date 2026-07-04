@@ -345,9 +345,11 @@ async function restorePlay() {
     renderRoles();
     renderSongs();
     renderScriptView();
+    $('input-section').classList.remove('hidden');
     $('setup-section').classList.remove('hidden');
     $('play-section').classList.remove('hidden');
     $('input-details').open = false;
+    $('home-details').open = false;
 
     state.index = Math.min(s.index || 0, state.items.length - 1);
     if (state.index > 0) markCurrent(state.index);
@@ -362,16 +364,103 @@ async function restorePlay() {
   return true;
 }
 
-async function refreshPlaysList() {
+function resetSession() {
+  stopAll();
+  state.items = [];
+  state.roles = [];
+  state.songs = [];
+  state.songFiles = new Map();
+  state.voiceByRole.clear();
+  $('script-input').value = '';
+  $('setup-section').classList.add('hidden');
+  $('play-section').classList.add('hidden');
+  $('parse-status').classList.add('hidden');
+}
+
+function setShowName(name) {
+  $('play-name').value = name;
+  localStorage.setItem('playName', name);
+}
+
+async function resumeShow(meta) {
+  setShowName(meta.displayName);
+  if (meta.hasSession && await restorePlay()) return;
+  // Music-only show (or unreadable save): open the input flow with its songs
+  resetSession();
+  $('input-details').open = true;
+  $('home-details').open = false;
+  $('input-section').classList.remove('hidden');
+  $('script-input').focus();
+}
+
+function startNewShow(name) {
+  if (!name.trim()) { $('new-play-name').focus(); return; }
+  setShowName(name.trim());
+  resetSession();
+  $('home-details').open = false;
+  $('input-section').classList.remove('hidden');
+  $('input-details').open = true;
+  $('script-input').focus();
+}
+
+async function renderHome() {
+  let plays = [];
   try {
-    const data = await (await fetch('/api/plays')).json();
-    $('plays-list').innerHTML = '';
-    for (const name of data.plays || []) {
-      const opt = document.createElement('option');
-      opt.value = name;
-      $('plays-list').appendChild(opt);
+    plays = (await (await fetch('/api/plays')).json()).plays || [];
+  } catch { /* home list is best-effort */ }
+
+  $('plays-list').innerHTML = '';
+  for (const p of plays) {
+    const opt = document.createElement('option');
+    opt.value = p.displayName;
+    $('plays-list').appendChild(opt);
+  }
+
+  const list = $('shows-list');
+  list.innerHTML = '';
+  if (!plays.length) {
+    const empty = document.createElement('div');
+    empty.className = 'shows-empty';
+    empty.textContent = 'No saved shows yet — start one below and everything will be saved automatically.';
+    list.appendChild(empty);
+    return;
+  }
+  for (const p of plays) {
+    const card = document.createElement('div');
+    card.className = 'show-card';
+    const name = document.createElement('div');
+    name.className = 'show-name';
+    name.textContent = `🎭 ${p.displayName}`;
+    const meta = document.createElement('div');
+    meta.className = 'show-meta';
+    if (p.hasSession) {
+      const pct = p.lines ? Math.round((100 * (p.index + 1)) / p.lines) : 0;
+      const when = p.savedAt ? new Date(p.savedAt).toLocaleDateString() : '';
+      meta.textContent = `${p.lines} lines · at line ${p.index + 1} (${pct}%) · ${p.songs} song file${p.songs === 1 ? '' : 's'}${when ? ' · ' + when : ''}`;
+    } else {
+      meta.textContent = `${p.songs} song file${p.songs === 1 ? '' : 's'} · no saved session yet`;
     }
-  } catch { /* picker is a nicety */ }
+    const actions = document.createElement('div');
+    actions.className = 'show-actions';
+    const resume = document.createElement('button');
+    resume.className = 'primary';
+    resume.textContent = p.hasSession ? '▶ Resume' : 'Open';
+    resume.onclick = () => resumeShow(p);
+    const del = document.createElement('button');
+    del.className = 'delete-btn';
+    del.textContent = '🗑';
+    del.title = 'Delete this show (its saved session and music)';
+    del.onclick = async () => {
+      if (!confirm(`Delete “${p.displayName}” — its saved session and downloaded music? This can't be undone.`)) return;
+      try {
+        await fetch(`/api/play?play=${encodeURIComponent(p.displayName)}`, { method: 'DELETE' });
+      } catch { /* re-render shows the truth either way */ }
+      renderHome();
+    };
+    actions.append(resume, del);
+    card.append(name, meta, actions);
+    list.appendChild(card);
+  }
 }
 
 // --- persistent music library (saved per show on the server) ---
@@ -863,11 +952,12 @@ document.addEventListener('keydown', (e) => {
 // Init browser voices up front so the cast list has voices immediately
 engines.webspeech.init().catch(() => {});
 
-// Restore the remembered show, if it has a saved session
-(async () => {
-  refreshPlaysList();
-  if ($('play-name').value.trim()) await restorePlay();
-})();
+// Home screen: pick a show to resume, or start a new one
+$('new-play-btn').onclick = () => startNewShow($('new-play-name').value);
+$('new-play-name').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') startNewShow($('new-play-name').value);
+});
+renderHome();
 
 // ---------------------------------------------------------------------------
 // Sample script

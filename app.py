@@ -14,6 +14,7 @@ import io
 import json
 import os
 import re
+import shutil
 import socket
 from pathlib import Path
 
@@ -333,22 +334,47 @@ def api_songs():
 
 @app.get("/api/plays")
 def api_plays():
-    """List shows that have anything saved, for the show-name picker."""
+    """List saved shows with enough metadata for the home screen."""
     if not MEDIA_DIR.is_dir():
         return jsonify({"plays": []})
     plays = []
     for d in sorted(MEDIA_DIR.iterdir()):
         if not d.is_dir():
             continue
-        name = d.name
+        entry = {
+            "displayName": d.name,
+            "hasSession": False,
+            "songs": sum(
+                1 for f in d.iterdir() if f.is_file() and f.suffix not in (".json", ".tmp")
+            ),
+        }
         pj = d / "play.json"
         if pj.exists():
             try:
-                name = json.loads(pj.read_text()).get("displayName") or name
+                s = json.loads(pj.read_text())
+                entry.update(
+                    displayName=s.get("displayName") or d.name,
+                    hasSession=True,
+                    lines=len(s.get("items") or []),
+                    index=int(s.get("index") or 0),
+                    savedAt=s.get("savedAt"),
+                )
             except (OSError, ValueError):
                 pass
-        plays.append(name)
+        plays.append(entry)
+    plays.sort(key=lambda p: p.get("savedAt") or 0, reverse=True)
     return jsonify({"plays": plays})
+
+
+@app.delete("/api/play")
+def api_delete_play():
+    """Delete a show — its saved session and its music folder."""
+    play = slugify(request.args.get("play", ""))
+    d = MEDIA_DIR / play
+    if not play or not d.is_dir():
+        return jsonify({"error": "no such show"}), 404
+    shutil.rmtree(d)
+    return jsonify({"ok": True})
 
 
 @app.get("/api/play")
