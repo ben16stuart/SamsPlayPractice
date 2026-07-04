@@ -21,6 +21,11 @@
   <section id="input-section" class="card">
     <details id="input-details" open>
     <summary><h2><span class="step">1</span> Paste the script</h2></summary>
+    <label class="field play-name-field">
+      Show name <span class="hint">— everything (script, cast, music, position) is saved per show and restored when you come back</span>
+      <input type="text" id="play-name" list="plays-list" placeholder="e.g. The Wizard of Oz" maxlength="60">
+      <datalist id="plays-list"></datalist>
+    </label>
     <textarea id="script-input" placeholder="Paste the script here…
 
 Supported formats:
@@ -83,10 +88,6 @@ Stage directions in (parentheses) or [brackets] are detected too."></textarea>
 
     <div id="songs-block" class="hidden">
       <h3>🎵 Music <span class="hint">— attach a file, paste a YouTube link, or paste a direct audio URL for each cue; hover any script line and click +🎵 to add music at that point</span></h3>
-      <label class="field play-name-field">
-        Show name <span class="hint">— music is saved on this computer in a folder per show, and reloads next time</span>
-        <input type="text" id="play-name" placeholder="e.g. The Wizard of Oz" maxlength="60">
-      </label>
       <div id="songs-list"></div>
     </div>
 

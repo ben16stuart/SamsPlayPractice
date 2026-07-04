@@ -322,7 +322,60 @@ def api_songs():
     d = MEDIA_DIR / play
     if not d.is_dir():
         return jsonify({"songs": []})
-    return jsonify({"songs": [song_entry(play, f) for f in sorted(d.iterdir()) if f.is_file()]})
+    return jsonify({
+        "songs": [
+            song_entry(play, f)
+            for f in sorted(d.iterdir())
+            if f.is_file() and f.suffix not in (".json", ".tmp")
+        ]
+    })
+
+
+@app.get("/api/plays")
+def api_plays():
+    """List shows that have anything saved, for the show-name picker."""
+    if not MEDIA_DIR.is_dir():
+        return jsonify({"plays": []})
+    plays = []
+    for d in sorted(MEDIA_DIR.iterdir()):
+        if not d.is_dir():
+            continue
+        name = d.name
+        pj = d / "play.json"
+        if pj.exists():
+            try:
+                name = json.loads(pj.read_text()).get("displayName") or name
+            except (OSError, ValueError):
+                pass
+        plays.append(name)
+    return jsonify({"plays": plays})
+
+
+@app.get("/api/play")
+def api_get_play():
+    """Return the saved session for a show (script, cast, settings, position)."""
+    f = MEDIA_DIR / slugify(request.args.get("play", "")) / "play.json"
+    if not f.exists():
+        return jsonify({"exists": False})
+    try:
+        return jsonify({"exists": True, "state": json.loads(f.read_text())})
+    except (OSError, ValueError) as e:
+        return jsonify({"exists": False, "error": f"saved state unreadable: {e}"})
+
+
+@app.post("/api/play")
+def api_save_play():
+    """Persist the full session for a show."""
+    data = request.get_json(silent=True) or {}
+    play = data.get("play", "")
+    saved = data.get("state")
+    if not play.strip() or not isinstance(saved, dict):
+        return jsonify({"error": "play and state required"}), 400
+    f = play_dir(play) / "play.json"
+    tmp = f.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(saved))
+    tmp.replace(f)  # atomic — a crash mid-write never corrupts the save
+    return jsonify({"ok": True})
 
 
 @app.post("/api/upload_song")

@@ -64,6 +64,11 @@ parser was used.
 
 ## How to use it
 
+0. **Name the show.** Everything — script, cast, voice choices, settings,
+   music, and your current position — is autosaved per show under `media/`
+   as you work. Come back later (or after a restart), pick the show from the
+   Show name field's dropdown, and the whole session is restored, ready to
+   resume from the exact line you left off.
 1. **Get the script in.** Paste it, click **📄 Load from PDF** (text layer
    extracted locally with `pypdf`, no AI needed), or click **📷 Load from
    photos** for pictures of printed pages — OCR'd with Claude vision when a
@@ -133,9 +138,11 @@ voices, free, private, zero install.
   the script analysis (role detection, song cues, stage directions) and returns
   structured JSON. Uses Claude with a strict JSON schema when
   `ANTHROPIC_API_KEY` is set, with the heuristic parser as automatic fallback.
-  Also hosts the persistent music library: `/api/download_song` (yt-dlp),
-  `/api/upload_song`, `/api/songs`, and `/media/<show>/<file>` serving from
-  the `media/` folder (one subfolder per show; gitignored).
+  Also hosts the per-show persistence: `/api/play` (GET/POST — the full
+  session saved as `media/<show>/play.json`), `/api/plays` (saved-show list),
+  the music library (`/api/download_song` via yt-dlp, `/api/upload_song`,
+  `/api/songs`), and `/media/<show>/<file>` serving. One folder per show
+  under `media/` (gitignored) holds everything.
 - **`static/app.js`** — the teleprompter, playback engine, and both TTS engines.
   Speech and song audio never leave the browser.
 - **`templates/index.html`**, **`static/styles.css`** — the marquee-and-spotlight UI.

@@ -197,6 +197,7 @@ async function analyzeScript() {
   $('input-details').open = false;   // script is in — tuck the input away
   $('setup-details').open = true;
   $('setup-section').scrollIntoView({ behavior: 'smooth' });
+  scheduleSave();
 }
 
 function autoAssignVoices() {
@@ -233,7 +234,7 @@ function voiceSelect(role) {
     if (state.voiceByRole.get(role) === v.id) opt.selected = true;
     sel.appendChild(opt);
   }
-  sel.onchange = () => state.voiceByRole.set(role, sel.value);
+  sel.onchange = () => { state.voiceByRole.set(role, sel.value); scheduleSave(); };
   return sel;
 }
 
@@ -269,6 +270,110 @@ function renderRoles() {
   }
 }
 
+// --- persistent show sessions (everything saved per show on the server) ---
+
+let restoring = false;
+let saveTimer = null;
+
+function snapshot() {
+  return {
+    displayName: playName(),
+    script: $('script-input').value,
+    items: state.items,
+    roles: state.roles,
+    songs: state.songs,
+    songSources: Object.fromEntries([...state.songFiles].filter(([, u]) => !u.startsWith('blob:'))),
+    voices: Object.fromEntries(state.voiceByRole),
+    engine: $('engine-select').value,
+    myRole: state.myRole,
+    myLineMode: $('my-line-mode').value,
+    rate: $('rate-slider').value,
+    gap: $('gap-slider').value,
+    readDirections: $('read-directions').checked,
+    hideMyLines: $('hide-my-lines').checked,
+    index: state.index,
+    savedAt: Date.now(),
+  };
+}
+
+function scheduleSave() {
+  if (restoring || !state.items.length) return;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async () => {
+    try {
+      await fetch('/api/play', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ play: playName(), state: snapshot() }),
+      });
+    } catch { /* saving is best-effort; next change retries */ }
+  }, 600);
+}
+
+async function restorePlay() {
+  let data;
+  try {
+    const res = await fetch(`/api/play?play=${encodeURIComponent(playName())}`);
+    data = await res.json();
+  } catch { return false; }
+  if (!data.exists || !data.state?.items?.length) return false;
+
+  const s = data.state;
+  restoring = true;
+  try {
+    $('script-input').value = s.script || '';
+    state.items = s.items;
+    state.roles = s.roles || [];
+    state.songs = s.songs || [];
+    state.myRole = s.myRole || (state.roles[0] && state.roles[0].name) || '';
+    $('engine-select').value = s.engine || 'webspeech';
+    state.engine = engines[$('engine-select').value];
+    $('my-line-mode').value = s.myLineMode || 'wait';
+    $('rate-slider').value = s.rate || 1;
+    $('gap-slider').value = s.gap || 1;
+    $('rate-value').textContent = `${rate().toFixed(1)}×`;
+    $('gap-value').textContent = `${gapScale().toFixed(2)}×`;
+    $('read-directions').checked = !!s.readDirections;
+    $('hide-my-lines').checked = !!s.hideMyLines;
+
+    state.songFiles = new Map(Object.entries(s.songSources || {}));
+    if (state.engine.name === 'webspeech') await state.engine.init().catch(() => {});
+    autoAssignVoices(); // defaults for anything the save doesn't cover
+    for (const [role, voice] of Object.entries(s.voices || {})) state.voiceByRole.set(role, voice);
+
+    renderMyRoleSelect();
+    renderRoles();
+    renderSongs();
+    renderScriptView();
+    $('setup-section').classList.remove('hidden');
+    $('play-section').classList.remove('hidden');
+    $('input-details').open = false;
+
+    state.index = Math.min(s.index || 0, state.items.length - 1);
+    if (state.index > 0) markCurrent(state.index);
+
+    const status = $('parse-status');
+    status.classList.remove('hidden');
+    status.textContent = `⏪ Restored “${s.displayName || playName()}” — ${state.items.length} lines` +
+      (state.index > 0 ? `, ready to resume at line ${state.index + 1}. Press Play.` : '. Press Play.');
+  } finally {
+    restoring = false;
+  }
+  return true;
+}
+
+async function refreshPlaysList() {
+  try {
+    const data = await (await fetch('/api/plays')).json();
+    $('plays-list').innerHTML = '';
+    for (const name of data.plays || []) {
+      const opt = document.createElement('option');
+      opt.value = name;
+      $('plays-list').appendChild(opt);
+    }
+  } catch { /* picker is a nicety */ }
+}
+
 // --- persistent music library (saved per show on the server) ---
 
 const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'untitled';
@@ -293,6 +398,7 @@ function setSongSource(title, url) {
   state.songFiles.set(title, url);
   renderScriptView();
   if (state.playing) markCurrent(state.index);
+  scheduleSave();
 }
 
 function renderSongs() {
@@ -401,6 +507,7 @@ function insertSongAfter(i) {
   renderSongs();
   renderScriptView();
   if (state.playing) markCurrent(state.index);
+  scheduleSave();
 }
 
 function removeSongAt(i) {
@@ -412,6 +519,7 @@ function removeSongAt(i) {
   renderSongs();
   renderScriptView();
   if (state.playing) markCurrent(state.index);
+  scheduleSave();
 }
 
 // ---------------------------------------------------------------------------
@@ -475,6 +583,7 @@ function markCurrent(i) {
     el.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
   $('progress-fill').style.width = `${(100 * (i + 1)) / Math.max(1, state.items.length)}%`;
+  scheduleSave();
 }
 
 // ---------------------------------------------------------------------------
@@ -707,29 +816,35 @@ $('engine-select').onchange = async () => {
   state.engine = engines[$('engine-select').value];
   const ok = await ensureEngineReady();
   if (ok) { autoAssignVoices(); renderRoles(); }
+  scheduleSave();
 };
 
 $('my-role-select').onchange = () => {
   state.myRole = $('my-role-select').value;
   renderScriptView();
+  scheduleSave();
 };
+
+$('my-line-mode').onchange = scheduleSave;
 
 $('play-name').value = localStorage.getItem('playName') || '';
 $('play-name').onchange = async () => {
   localStorage.setItem('playName', $('play-name').value.trim());
-  // Drop attachments saved under the previous show, then load this show's
+  if (await restorePlay()) return;
+  // No saved session under this name — keep what's on screen and re-map music
   for (const [title, src] of [...state.songFiles]) {
     if (src.startsWith('/media/')) state.songFiles.delete(title);
   }
   await loadSavedSongs();
   renderSongs();
   renderScriptView();
+  scheduleSave(); // adopt the current session under the new show name
 };
 
-$('read-directions').onchange = renderRoles;
-$('hide-my-lines').onchange = renderScriptView;
-$('rate-slider').oninput = () => $('rate-value').textContent = `${rate().toFixed(1)}×`;
-$('gap-slider').oninput = () => $('gap-value').textContent = `${gapScale().toFixed(2)}×`;
+$('read-directions').onchange = () => { renderRoles(); scheduleSave(); };
+$('hide-my-lines').onchange = () => { renderScriptView(); scheduleSave(); };
+$('rate-slider').oninput = () => { $('rate-value').textContent = `${rate().toFixed(1)}×`; scheduleSave(); };
+$('gap-slider').oninput = () => { $('gap-value').textContent = `${gapScale().toFixed(2)}×`; scheduleSave(); };
 
 $('play-btn').onclick = play;
 $('pause-btn').onclick = pause;
@@ -747,6 +862,12 @@ document.addEventListener('keydown', (e) => {
 
 // Init browser voices up front so the cast list has voices immediately
 engines.webspeech.init().catch(() => {});
+
+// Restore the remembered show, if it has a saved session
+(async () => {
+  refreshPlaysList();
+  if ($('play-name').value.trim()) await restorePlay();
+})();
 
 // ---------------------------------------------------------------------------
 // Sample script
