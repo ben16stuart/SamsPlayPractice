@@ -9,6 +9,8 @@ configured; otherwise a heuristic pattern parser handles standard script
 formats. Set ANTHROPIC_API_KEY to enable AI parsing.
 """
 
+import base64
+import io
 import json
 import os
 import re
@@ -21,6 +23,16 @@ except ImportError:  # AI parsing optional — heuristic parser still works
     anthropic = None
 
 from pypdf import PdfReader
+
+try:
+    import pytesseract
+    from PIL import Image
+
+    # pytesseract needs the tesseract binary, not just the Python package
+    pytesseract.get_tesseract_version()
+    TESSERACT = True
+except Exception:  # noqa: BLE001 — missing package or binary
+    TESSERACT = False
 
 app = Flask(__name__)
 
@@ -236,9 +248,98 @@ def ai_parse_script(raw: str) -> list[dict]:
     return items
 
 
+TRANSCRIBE_SYSTEM = """\
+You transcribe photographed or scanned pages of a theater/musical script.
+
+Output ONLY the transcription — no commentary, no markdown fences. Reproduce the text \
+faithfully: keep character names exactly as printed (e.g. "SAM:"), keep stage directions \
+in their (parentheses) or [brackets], keep song cues, and put each speech on its own line \
+with a blank line between elements. If a word is genuinely illegible, write [illegible]. \
+Transcribe the pages in the order given."""
+
+
+def ai_transcribe(blocks: list[dict]) -> str:
+    """Have Claude transcribe image/PDF content blocks into plain script text."""
+    client = anthropic.Anthropic()
+    with client.messages.stream(
+        model=PARSER_MODEL,
+        max_tokens=64000,
+        thinking={"type": "adaptive"},
+        system=TRANSCRIBE_SYSTEM,
+        messages=[{"role": "user", "content": blocks}],
+    ) as stream:
+        response = stream.get_final_message()
+    if response.stop_reason == "refusal":
+        raise RuntimeError("the model declined to process this file")
+    text = "".join(b.text for b in response.content if b.type == "text").strip()
+    if not text:
+        raise RuntimeError("no text recognized")
+    return text
+
+
 @app.get("/")
 def index():
     return render_template("index.html")
+
+
+@app.post("/api/extract_image")
+def api_extract_image():
+    """OCR photographed script pages. Uses Claude vision when a key is set
+    (robust to phone-photo skew/lighting), otherwise local Tesseract OCR."""
+    files = request.files.getlist("images")
+    if not files:
+        return jsonify({"error": "no images uploaded"}), 400
+
+    allowed = {"image/jpeg", "image/png", "image/webp", "image/gif"}
+    images = []  # (mimetype, bytes)
+    for f in files:
+        mime = f.mimetype or ""
+        if mime not in allowed:
+            return jsonify({
+                "error": f"unsupported image type '{mime}' ({f.filename}). "
+                         "Use JPEG or PNG — iPhone users: set camera format to "
+                         "'Most Compatible', or share the photo as JPEG."
+            }), 415
+        images.append((mime, f.read()))
+
+    if ai_available():
+        try:
+            blocks = [
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": mime,
+                        "data": base64.standard_b64encode(data).decode(),
+                    },
+                }
+                for mime, data in images
+            ]
+            return jsonify({"text": ai_transcribe(blocks), "method": "ai-vision"})
+        except Exception:  # noqa: BLE001 — fall through to Tesseract
+            pass
+
+    if TESSERACT:
+        pages = []
+        for _, data in images:
+            try:
+                pages.append(pytesseract.image_to_string(Image.open(io.BytesIO(data))))
+            except Exception as e:  # noqa: BLE001
+                return jsonify({"error": f"OCR failed: {e}"}), 422
+        text = "\n\n".join(p.strip() for p in pages if p.strip())
+        if len(text) < 40:
+            return jsonify({
+                "error": "OCR found almost no text. Try a sharper, straight-on, "
+                         "well-lit photo — or set ANTHROPIC_API_KEY for AI vision, "
+                         "which handles difficult photos much better."
+            }), 422
+        return jsonify({"text": text, "method": "tesseract"})
+
+    return jsonify({
+        "error": "No OCR engine available. Install Tesseract "
+                 "(e.g. 'sudo apt install tesseract-ocr' or 'brew install tesseract') "
+                 "for free local OCR, or set ANTHROPIC_API_KEY for AI vision."
+    }), 501
 
 
 @app.post("/api/extract_pdf")
@@ -248,8 +349,9 @@ def api_extract_pdf():
     file = request.files.get("pdf")
     if file is None:
         return jsonify({"error": "no file uploaded"}), 400
+    raw = file.read()
     try:
-        reader = PdfReader(file.stream)
+        reader = PdfReader(io.BytesIO(raw))
         pages = [page.extract_text() or "" for page in reader.pages]
     except Exception as e:  # noqa: BLE001 — encrypted/corrupt PDFs etc.
         return jsonify({"error": f"could not read PDF: {e}"}), 400
@@ -257,13 +359,34 @@ def api_extract_pdf():
     text = "\n\n".join(p.strip() for p in pages if p.strip())
     # A script page has hundreds of characters; near-empty output means the
     # PDF is a scan (images of pages) with no embedded text.
-    if len(text) < 40 * max(1, len(pages)):
-        return jsonify({
-            "error": "This PDF appears to be a scan (no embedded text). "
-                     "Re-export it from the original document, run OCR on it, "
-                     "or paste the script text manually."
-        }), 422
-    return jsonify({"text": text, "pages": len(pages)})
+    if len(text) >= 40 * max(1, len(pages)):
+        return jsonify({"text": text, "pages": len(pages), "method": "text-layer"})
+
+    # Scanned PDF — Claude's PDF support runs vision on each page.
+    if ai_available():
+        try:
+            blocks = [{
+                "type": "document",
+                "source": {
+                    "type": "base64",
+                    "media_type": "application/pdf",
+                    "data": base64.standard_b64encode(raw).decode(),
+                },
+            }]
+            return jsonify({
+                "text": ai_transcribe(blocks),
+                "pages": len(pages),
+                "method": "ai-vision",
+            })
+        except Exception as e:  # noqa: BLE001
+            return jsonify({"error": f"This PDF is a scan and AI transcription failed ({e})."}), 422
+
+    return jsonify({
+        "error": "This PDF appears to be a scan (no embedded text). "
+                 "Set ANTHROPIC_API_KEY to transcribe it with AI vision, run OCR on it "
+                 "first (e.g. ocrmypdf), or take photos of the pages and use "
+                 "'Load from photos' instead."
+    }), 422
 
 
 @app.post("/api/parse")
