@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sam's Play Practice</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎭</text></svg>">
+</head>
+<body>
+
+<header class="marquee">
+  <div class="bulbs" aria-hidden="true"></div>
+  <h1>🎭 SAM'S PLAY PRACTICE 🎭</h1>
+  <p class="tagline">Paste the script · pick your role · the cast reads, you rehearse</p>
+  <div class="bulbs" aria-hidden="true"></div>
+</header>
+
+<main>
+  <!-- ============ STEP 1: SCRIPT INPUT ============ -->
+  <section id="input-section" class="card">
+    <h2><span class="step">1</span> Paste the script</h2>
+    <textarea id="script-input" placeholder="Paste the script here…
+
+Supported formats:
+  SAM: I can't believe it's opening night!
+  DOROTHY: You'll be great, Sam.
+
+or name on its own line:
+  SAM
+  I can't believe it's opening night!
+
+Song cues like  [SONG: Ease on Down the Road]  are detected automatically.
+Stage directions in (parentheses) or [brackets] are detected too."></textarea>
+    <div class="row">
+      <button id="parse-btn" class="primary">✨ Analyze script &amp; find roles</button>
+      <button id="sample-btn">Load sample script</button>
+    </div>
+  </section>
+
+  <!-- ============ STEP 2: ROLES & VOICES ============ -->
+  <section id="setup-section" class="card hidden">
+    <h2><span class="step">2</span> Cast &amp; voices</h2>
+
+    <div class="row wrap">
+      <label class="field">
+        Speech engine
+        <select id="engine-select">
+          <option value="webspeech">Browser voices (instant, offline)</option>
+          <option value="kokoro">Kokoro AI voices (natural — one-time ~80&nbsp;MB download)</option>
+        </select>
+      </label>
+      <label class="field">
+        My role (lines to practice)
+        <select id="my-role-select"></select>
+      </label>
+      <label class="field">
+        When it's my line…
+        <select id="my-line-mode">
+          <option value="wait">Pause &amp; wait for me (Space / Continue)</option>
+          <option value="timed">Pause for a timed gap, then continue</option>
+          <option value="beep">Beep, short pause, continue</option>
+          <option value="speak">Read my line aloud too (learning mode)</option>
+          <option value="skip">Skip it instantly</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="engine-status" class="notice hidden"></div>
+
+    <h3>Cast <span class="hint">— every role gets its own voice; change any of them</span></h3>
+    <div id="roles-list" class="roles-grid"></div>
+
+    <div id="songs-block" class="hidden">
+      <h3>🎵 Songs detected <span class="hint">— attach an audio file (mp3/m4a/wav) to play at that point</span></h3>
+      <div id="songs-list"></div>
+    </div>
+
+    <div class="row wrap options-row">
+      <label class="check"><input type="checkbox" id="read-directions"> Read stage directions (Narrator)</label>
+      <label class="check"><input type="checkbox" id="hide-my-lines"> Hide my lines (blur — hover to peek)</label>
+      <label class="field slim">
+        Speed <span id="rate-value">1.0×</span>
+        <input type="range" id="rate-slider" min="0.5" max="1.6" step="0.1" value="1">
+      </label>
+      <label class="field slim">
+        My-line pause <span id="gap-value">1.0×</span>
+        <input type="range" id="gap-slider" min="0.5" max="3" step="0.25" value="1">
+      </label>
+    </div>
+  </section>
+
+  <!-- ============ STEP 3: THE STAGE ============ -->
+  <section id="play-section" class="card stage hidden">
+    <h2><span class="step">3</span> On stage</h2>
+    <div class="transport">
+      <button id="play-btn" class="primary big">▶ Play</button>
+      <button id="pause-btn" disabled>⏸ Pause</button>
+      <button id="stop-btn" disabled>⏹ Stop</button>
+      <button id="prev-btn">⏮ Back</button>
+      <button id="next-btn">⏭ Skip</button>
+      <button id="continue-btn" class="accent big hidden">✅ Said it! — Continue (Space)</button>
+    </div>
+    <div class="progress"><div id="progress-fill"></div></div>
+    <p class="hint">Click any line to start from there. The script scrolls as the cast performs.</p>
+    <div id="script-view" class="teleprompter">
+      <div class="prompter-fade top"></div>
+      <div id="prompter-lines"></div>
+      <div class="prompter-fade bottom"></div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <p>Runs entirely on this computer — nothing is uploaded anywhere.
+     Kokoro voices are generated in-browser after a one-time model download.</p>
+</footer>
+
+<script type="module" src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
