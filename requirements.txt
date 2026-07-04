@@ -1,6 +1,9 @@
 flask>=3.0
-anthropic>=0.75
 pypdf>=5.0
 pytesseract>=0.3
 pillow>=10.0
 yt-dlp>=2025.1.1
+
+# Optional AI add-on (script parsing for any format + photo/scan transcription).
+# To enable later:  pip install anthropic   and set ANTHROPIC_API_KEY.
+# anthropic>=0.75

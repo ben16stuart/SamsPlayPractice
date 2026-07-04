@@ -6,7 +6,9 @@ one their own voice, reads everyone **else's** lines aloud, plays the show's
 songs at the right moments, and leaves Sam's lines for him to say — all in a
 theater-style teleprompter that scrolls through the script as the cast performs.
 
-Everything runs on your own computer — no accounts, no uploads, no cloud.
+Everything runs on your own computer — no accounts, no uploads, no cloud, and
+**no AI required**. (An optional AI add-on can be enabled later — see the end
+of this file.)
 
 ## Quick start
 
@@ -38,29 +40,7 @@ run it. Mac-specific notes:
 - **Voices:** macOS ships excellent system voices, and Safari works too
   (Chrome recommended). Add more voices in System Settings → Accessibility →
   Spoken Content → System Voice → Manage Voices.
-- **Photo OCR without an API key:** `brew install tesseract`.
-
-### Enable AI script parsing (recommended)
-
-Real scripts are messy — inconsistent formatting, OCR'd pages, unusual layouts.
-With an Anthropic API key set, the script analysis is done by **Claude**
-(structured outputs guarantee valid results), which handles any format and
-normalizes character names automatically:
-
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...   # get one at https://platform.claude.com
-./start.sh
-```
-
-Without a key the app automatically falls back to the built-in pattern parser
-(which handles standard `NAME: line` formats), and the page tells you which
-parser was used.
-
-- Model: `claude-opus-4-8` by default; override with `CLAUDE_PARSER_MODEL`.
-- Cost: parsing is a one-time call per script — a full school-play script is
-  typically a few cents ($5/M input, $25/M output tokens for Opus 4.8).
-- The script text goes to the Anthropic API for parsing only; speech and song
-  audio still never leave the browser.
+- **Photo OCR:** `brew install tesseract`.
 
 ## How to use it
 
@@ -72,14 +52,11 @@ parser was used.
    autosaved per show under `media/` as you work; 🗑 deletes a show and its
    music.
 1. **Get the script in.** Paste it, click **📄 Load from PDF** (text layer
-   extracted locally with `pypdf`, no AI needed), or click **📷 Load from
-   photos** for pictures of printed pages — OCR'd with Claude vision when a
-   key is set, or free local Tesseract OCR otherwise (`sudo apt install
-   tesseract-ocr` / `brew install tesseract`). Then click
-   **✨ Analyze script & find roles**.
-   With an API key set, Claude extracts every role, line, song cue, and stage
-   direction from any script format. The fallback pattern parser handles the
-   common conventions:
+   extracted locally with `pypdf`), or click **📷 Load from photos** for
+   pictures of printed pages — OCR'd locally with Tesseract (`sudo apt
+   install tesseract-ocr` / `brew install tesseract`). Then click
+   **✨ Analyze script & find roles**. The parser handles the common script
+   conventions:
    - `SAM: I can't believe it's opening night!`
    - Character name (ALL CAPS) on its own line, dialogue below it
    - Stage directions in `(parentheses)` or `[brackets]`
@@ -104,7 +81,7 @@ parser was used.
    no audio attached, the narrator announces the song instead. Only download
    music you have the rights to use for rehearsal.
 5. **Rehearse.** Press Play — the teleprompter scrolls through the script,
-   spotlighting the current line, with Sam's lines highlighted in gold. Click
+   spotlighting the current line, with Sam's lines highlighted in red. Click
    any line to start from there. Turn on **Hide my lines** to blur them and
    test his memory (hover to peek).
 
@@ -138,9 +115,7 @@ voices, free, private, zero install.
 
 - **`app.py`** — Flask server. `GET /` serves the page; `POST /api/parse` runs
   the script analysis (role detection, song cues, stage directions) and returns
-  structured JSON. Uses Claude with a strict JSON schema when
-  `ANTHROPIC_API_KEY` is set, with the heuristic parser as automatic fallback.
-  Also hosts the per-show persistence: `/api/play` (GET/POST — the full
+  structured JSON. Also hosts the per-show persistence: `/api/play` (GET/POST — the full
   session saved as `media/<show>/play.json`), `/api/plays` (saved-show list),
   the music library (`/api/download_song` via yt-dlp, `/api/upload_song`,
   `/api/songs`), and `/media/<show>/<file>` serving. One folder per show
@@ -165,4 +140,25 @@ or `ocrmypdf` locally), or pasting the text from another source.
 
 - Chrome/Edge recommended. Firefox and Safari work with Browser voices; Kokoro needs a modern browser.
 - Kokoro's model downloads from Hugging Face on first use and is cached by the browser afterward.
-- Without an API key, role detection is heuristic and runs fully locally. If a role is missed, make sure the character's name is in CAPS followed by a colon or on its own line — or set `ANTHROPIC_API_KEY` and let Claude handle it.
+- Role detection runs fully locally. If a role is missed, make sure the character's name is in CAPS followed by a colon or on its own line.
+
+## Optional AI add-on (for later)
+
+The code ships with a dormant AI upgrade that is **completely off by default**
+— nothing is installed, no key is needed, and no data leaves the machine. If
+the built-in parser or Tesseract ever struggles (very messy script layouts,
+hard-to-read photos, scanned PDFs), enable it with:
+
+```bash
+.venv/bin/pip install anthropic
+export ANTHROPIC_API_KEY=sk-ant-...   # get one at https://platform.claude.com
+./start.sh
+```
+
+That's the whole switch — with a key present, Claude handles script analysis
+(any format, character names normalized) and photo/scanned-PDF transcription,
+and the page says when AI did the work. Remove the key to go back to fully
+local. Only the script text/page images are sent to the API, only at analysis
+time; speech and song audio never leave the browser either way. Parsing a full
+script costs a few cents (`claude-opus-4-8` by default; override with
+`CLAUDE_PARSER_MODEL`).

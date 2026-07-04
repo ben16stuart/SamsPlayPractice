@@ -4,9 +4,12 @@ Serves the rehearsal interface and does the script analysis server-side:
 POST /api/parse takes raw script text and returns structured items
 (dialogue / song cues / stage directions), the detected cast, and songs.
 
-Parsing is done by Claude (structured outputs) when an Anthropic API key is
-configured; otherwise a heuristic pattern parser handles standard script
-formats. Set ANTHROPIC_API_KEY to enable AI parsing.
+The app is fully functional without any AI: a pattern parser handles standard
+script formats, pypdf reads PDF text layers, and Tesseract OCRs photos.
+
+Optional AI add-on (off by default): install the `anthropic` package and set
+ANTHROPIC_API_KEY, and Claude takes over script parsing (any format) and
+photo/scanned-PDF transcription. No other part of the app touches the API.
 """
 
 import base64
@@ -22,8 +25,8 @@ from flask import Flask, jsonify, render_template, request, send_from_directory
 from werkzeug.utils import secure_filename
 
 try:
-    import anthropic
-except ImportError:  # AI parsing optional — heuristic parser still works
+    import anthropic  # optional add-on — not in requirements.txt by default
+except ImportError:
     anthropic = None
 
 try:
@@ -563,9 +566,9 @@ def api_extract_pdf():
 
     return jsonify({
         "error": "This PDF appears to be a scan (no embedded text). "
-                 "Set ANTHROPIC_API_KEY to transcribe it with AI vision, run OCR on it "
-                 "first (e.g. ocrmypdf), or take photos of the pages and use "
-                 "'Load from photos' instead."
+                 "Run OCR on it first (e.g. ocrmypdf), or take photos of the pages "
+                 "and use 'Load from photos' (local Tesseract OCR). "
+                 "Optional: the AI add-on (ANTHROPIC_API_KEY) can transcribe scans directly."
     }), 422
 
 
@@ -583,9 +586,7 @@ def api_parse():
             items = ai_parse_script(text)
             parser = "ai"
         except Exception as e:  # noqa: BLE001 — any AI failure falls back
-            note = f"AI parse failed ({e}); used the pattern parser instead."
-    elif use_ai:
-        note = "Set ANTHROPIC_API_KEY to enable AI parsing; used the pattern parser."
+            note = f"AI parse failed ({e}); used the built-in parser instead."
     if items is None:
         items = parse_script(text)
 

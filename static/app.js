@@ -170,7 +170,7 @@ async function analyzeScript() {
   status.classList.remove('hidden');
   status.textContent = data.parser === 'ai'
     ? '✨ Cast, songs, and lines extracted by Claude AI.'
-    : `🔍 Parsed with the pattern parser. ${data.note || ''}`;
+    : `🔍 Script analyzed — cast, songs, and lines detected. ${data.note || ''}`;
 
   state.items = data.items;
   state.roles = data.roles;
