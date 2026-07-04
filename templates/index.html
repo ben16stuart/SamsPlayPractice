@@ -32,10 +32,13 @@ or name on its own line:
 
 Song cues like  [SONG: Ease on Down the Road]  are detected automatically.
 Stage directions in (parentheses) or [brackets] are detected too."></textarea>
-    <div class="row">
+    <div class="row wrap">
       <button id="parse-btn" class="primary">✨ Analyze script &amp; find roles</button>
+      <button id="pdf-btn">📄 Load from PDF…</button>
+      <input type="file" id="pdf-input" accept="application/pdf,.pdf" class="hidden">
       <button id="sample-btn">Load sample script</button>
     </div>
+    <div id="pdf-status" class="notice hidden"></div>
   </section>
 
   <!-- ============ STEP 2: ROLES & VOICES ============ -->

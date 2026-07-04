@@ -520,6 +520,27 @@ async function ensureEngineReady() {
 $('parse-btn').onclick = analyzeScript;
 $('sample-btn').onclick = () => { $('script-input').value = SAMPLE_SCRIPT; analyzeScript(); };
 
+$('pdf-btn').onclick = () => $('pdf-input').click();
+$('pdf-input').onchange = async () => {
+  const file = $('pdf-input').files[0];
+  if (!file) return;
+  const status = $('pdf-status');
+  status.classList.remove('hidden');
+  status.textContent = `📄 Extracting text from ${file.name}…`;
+  const form = new FormData();
+  form.append('pdf', file);
+  try {
+    const res = await fetch('/api/extract_pdf', { method: 'POST', body: form });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `server returned ${res.status}`);
+    $('script-input').value = data.text;
+    status.textContent = `📄 Extracted ${data.pages} page${data.pages === 1 ? '' : 's'} from ${file.name} — review the text, then Analyze.`;
+  } catch (e) {
+    status.textContent = `⚠️ ${e.message}`;
+  }
+  $('pdf-input').value = ''; // allow re-selecting the same file
+};
+
 $('engine-select').onchange = async () => {
   stopAll();
   state.engine = engines[$('engine-select').value];

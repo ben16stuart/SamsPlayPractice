@@ -20,6 +20,8 @@ try:
 except ImportError:  # AI parsing optional — heuristic parser still works
     anthropic = None
 
+from pypdf import PdfReader
+
 app = Flask(__name__)
 
 SONG_CUE = re.compile(
@@ -237,6 +239,31 @@ def ai_parse_script(raw: str) -> list[dict]:
 @app.get("/")
 def index():
     return render_template("index.html")
+
+
+@app.post("/api/extract_pdf")
+def api_extract_pdf():
+    """Extract the text layer of an uploaded PDF — no AI involved.
+    Scanned/image-only PDFs have no text layer and are reported as such."""
+    file = request.files.get("pdf")
+    if file is None:
+        return jsonify({"error": "no file uploaded"}), 400
+    try:
+        reader = PdfReader(file.stream)
+        pages = [page.extract_text() or "" for page in reader.pages]
+    except Exception as e:  # noqa: BLE001 — encrypted/corrupt PDFs etc.
+        return jsonify({"error": f"could not read PDF: {e}"}), 400
+
+    text = "\n\n".join(p.strip() for p in pages if p.strip())
+    # A script page has hundreds of characters; near-empty output means the
+    # PDF is a scan (images of pages) with no embedded text.
+    if len(text) < 40 * max(1, len(pages)):
+        return jsonify({
+            "error": "This PDF appears to be a scan (no embedded text). "
+                     "Re-export it from the original document, run OCR on it, "
+                     "or paste the script text manually."
+        }), 422
+    return jsonify({"text": text, "pages": len(pages)})
 
 
 @app.post("/api/parse")

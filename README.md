@@ -48,7 +48,9 @@ parser was used.
 
 ## How to use it
 
-1. **Paste the script** and click **✨ Analyze script & find roles**.
+1. **Paste the script** (or click **📄 Load from PDF** — the text layer is
+   extracted locally with `pypdf`, no AI or internet needed) and click
+   **✨ Analyze script & find roles**.
    With an API key set, Claude extracts every role, line, song cue, and stage
    direction from any script format. The fallback pattern parser handles the
    common conventions:
@@ -108,6 +110,18 @@ voices, free, private, zero install.
 - **`static/app.js`** — the teleprompter, playback engine, and both TTS engines.
   Speech and song audio never leave the browser.
 - **`templates/index.html`**, **`static/styles.css`** — the marquee-and-spotlight UI.
+
+## PDF scripts
+
+**Load from PDF** works entirely without AI: `pypdf` reads the PDF's embedded
+text layer locally and drops it into the script box for review before
+analysis. This covers any digitally-created PDF (exported from Word, Google
+Docs, a publisher's licensed script PDF, etc.).
+
+The one case that can't be done without AI/OCR is a **scanned** PDF — photos
+of paper pages contain no text, only images. The app detects this and tells
+you; options there are running OCR on it first (e.g. Adobe's "Recognize Text",
+or `ocrmypdf` locally), or pasting the text from another source.
 
 ## Notes
 
