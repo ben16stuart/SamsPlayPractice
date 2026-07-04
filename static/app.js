@@ -181,12 +181,19 @@ async function analyzeScript() {
     return;
   }
 
-  // Default "my role" to SAM if present
-  const sam = state.roles.find(r => /\bSAM\b/.test(r.name));
-  state.myRole = sam ? sam.name : state.roles[0].name;
+  // Keep the previous "my role" if that character still exists (re-analyze
+  // after an edit); otherwise default to SAM if present
+  if (!state.roles.some(r => r.name === state.myRole)) {
+    const sam = state.roles.find(r => /\bSAM\b/.test(r.name));
+    state.myRole = sam ? sam.name : state.roles[0].name;
+  }
 
   stopAll();
+  const prevVoices = new Map(state.voiceByRole);
   autoAssignVoices();
+  for (const [role, voice] of prevVoices) {
+    if (state.voiceByRole.has(role)) state.voiceByRole.set(role, voice);
+  }
   renderMyRoleSelect();
   renderRoles();
   await loadSavedSongs();
@@ -649,6 +656,11 @@ function renderScriptView() {
 
     const tools = document.createElement('span');
     tools.className = 'line-tools';
+    const editBtn = document.createElement('button');
+    editBtn.textContent = '✏️';
+    editBtn.title = 'Edit this line (fix OCR mistakes, change speaker, delete)';
+    editBtn.onclick = (e) => { e.stopPropagation(); startEditLine(i); };
+    tools.appendChild(editBtn);
     const addBtn = document.createElement('button');
     addBtn.textContent = '+🎵';
     addBtn.title = 'Insert music after this line';
@@ -665,6 +677,139 @@ function renderScriptView() {
     div.append(who, what, tools);
     view.appendChild(div);
   });
+}
+
+// --- inline line editing (fix OCR mistakes, reassign speakers, delete) ---
+
+function recomputeRoles() {
+  const counts = new Map();
+  for (const it of state.items) {
+    if (it.type === 'dialogue') counts.set(it.role, (counts.get(it.role) || 0) + 1);
+  }
+  const oldOrder = state.roles.map(r => r.name);
+  const names = [...counts.keys()].sort((a, b) => {
+    const ia = oldOrder.indexOf(a), ib = oldOrder.indexOf(b);
+    return (ia < 0 ? 1e9 : ia) - (ib < 0 ? 1e9 : ib);
+  });
+  state.roles = names.map(n => ({ name: n, count: counts.get(n) }));
+  const voices = state.engine.voices || [];
+  state.roles.forEach((r, idx) => {
+    if (!state.voiceByRole.has(r.name) && voices.length) {
+      state.voiceByRole.set(r.name, voices[idx % voices.length].id);
+    }
+  });
+  if (!counts.has(state.myRole)) state.myRole = state.roles[0]?.name || '';
+}
+
+function afterLineEdit() {
+  recomputeRoles();
+  state.songs = [...new Set(state.items.filter(x => x.type === 'song').map(x => x.title))];
+  renderMyRoleSelect();
+  renderRoles();
+  renderSongs();
+  renderScriptView();
+  state.index = Math.min(state.index, Math.max(0, state.items.length - 1));
+  if (state.playing || state.index > 0) markCurrent(state.index);
+  scheduleSave();
+}
+
+function startEditLine(i) {
+  const it = state.items[i];
+  const div = document.querySelector(`.line[data-index="${i}"]`);
+  if (!div || div.classList.contains('editing')) return;
+  div.classList.add('editing');
+  div.onclick = null;
+  div.innerHTML = '';
+
+  const editor = document.createElement('div');
+  editor.className = 'line-editor';
+
+  let roleSel = null, textArea = null, titleInput = null;
+  if (it.type === 'dialogue') {
+    roleSel = document.createElement('select');
+    for (const r of state.roles) {
+      const opt = document.createElement('option');
+      opt.value = r.name;
+      opt.textContent = r.name;
+      if (r.name === it.role) opt.selected = true;
+      roleSel.appendChild(opt);
+    }
+    const other = document.createElement('option');
+    other.value = '__new__';
+    other.textContent = '＋ new character…';
+    roleSel.appendChild(other);
+    editor.appendChild(roleSel);
+  }
+  if (it.type === 'song') {
+    titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.value = it.title;
+    editor.appendChild(titleInput);
+  } else {
+    textArea = document.createElement('textarea');
+    textArea.value = it.type === 'dialogue' ? it.display : it.text;
+    editor.appendChild(textArea);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'editor-actions';
+  const save = document.createElement('button');
+  save.className = 'primary';
+  save.textContent = '💾 Save';
+  const cancel = document.createElement('button');
+  cancel.textContent = 'Cancel';
+  const del = document.createElement('button');
+  del.className = 'delete-line';
+  del.textContent = '🗑 Delete line';
+
+  save.onclick = () => {
+    if (it.type === 'dialogue') {
+      let role = roleSel.value;
+      if (role === '__new__') {
+        role = (prompt('New character name:') || '').trim().toUpperCase();
+        if (!role) return;
+      }
+      const text = textArea.value.trim();
+      if (!text) return;
+      it.role = role;
+      it.display = text.replace(/\s+/g, ' ');
+      it.speak = it.display.replace(/[\(\[][^\)\]]*[\)\]]/g, ' ').replace(/\s+/g, ' ').trim();
+    } else if (it.type === 'direction') {
+      const text = textArea.value.trim();
+      if (!text) return;
+      it.text = text;
+    } else {
+      const t = titleInput.value.trim();
+      if (!t) return;
+      const old = it.title;
+      it.title = t;
+      if (old !== t) {
+        const src = state.songFiles.get(old);
+        if (src && !state.songFiles.has(t)) state.songFiles.set(t, src);
+        if (src && !state.items.some(x => x !== it && x.type === 'song' && x.title === old)) {
+          state.songFiles.delete(old);
+        }
+      }
+    }
+    afterLineEdit();
+  };
+  cancel.onclick = () => { renderScriptView(); if (state.playing || state.index > 0) markCurrent(state.index); };
+  del.onclick = () => {
+    if (!confirm('Delete this line from the script?')) return;
+    state.items.splice(i, 1);
+    if (state.index > i) state.index--;
+    afterLineEdit();
+  };
+
+  editor.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') cancel.onclick();
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey || e.target === titleInput)) save.onclick();
+  });
+
+  actions.append(save, cancel, del);
+  editor.appendChild(actions);
+  div.appendChild(editor);
+  (textArea || titleInput).focus();
 }
 
 function markCurrent(i) {

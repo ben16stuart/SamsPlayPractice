@@ -80,7 +80,13 @@ run it. Mac-specific notes:
    teleprompter and click **+🎵** to insert a cue there (✕ removes it). With
    no audio attached, the narrator announces the song instead. Only download
    music you have the rights to use for rehearsal.
-5. **Rehearse.** Press Play — the teleprompter scrolls through the script,
+5. **Fix anything the parser or OCR got wrong.** Hover any line and click
+   **✏️** to edit it in place — correct the text, reassign it to a different
+   character (or a brand-new one), or delete a junk line. Role counts, the
+   cast list, and the autosave all update immediately. For bigger rewrites,
+   reopen step 1, edit the script text, and re-Analyze — your voice choices
+   and role selection are kept for characters that still exist.
+6. **Rehearse.** Press Play — the teleprompter scrolls through the script,
    spotlighting the current line, with Sam's lines highlighted in red. Click
    any line to start from there. Turn on **Hide my lines** to blur them and
    test his memory (hover to peek).

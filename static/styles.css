@@ -336,6 +336,19 @@ input[type="range"] { accent-color: var(--primary); }
   border-color: var(--red);
   box-shadow: 0 0 24px rgba(239, 68, 68, 0.4), 0 0 80px rgba(239, 68, 68, 0.14);
 }
+/* inline line editor */
+.line.editing {
+  opacity: 1; transform: none; cursor: default;
+  background: #151e33; border-color: var(--primary);
+}
+.line-editor { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+.line-editor textarea { min-height: 72px; font-family: inherit; font-size: 0.95rem; }
+.line-editor select, .line-editor input[type="text"] { max-width: 320px; }
+.editor-actions { display: flex; gap: 0.5rem; align-items: center; }
+.editor-actions button { padding: 0.35rem 0.9rem; font-size: 0.85rem; }
+.editor-actions .delete-line { margin-left: auto; border-color: transparent; color: var(--muted); }
+.editor-actions .delete-line:hover { border-color: var(--red); color: var(--red-soft); box-shadow: none; }
+
 .line .what.masked { filter: blur(7px); transition: filter 0.2s; }
 .line .what.masked:hover { filter: none; }
 
