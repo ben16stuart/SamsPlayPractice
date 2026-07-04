@@ -19,7 +19,8 @@
 <main>
   <!-- ============ STEP 1: SCRIPT INPUT ============ -->
   <section id="input-section" class="card">
-    <h2><span class="step">1</span> Paste the script</h2>
+    <details id="input-details" open>
+    <summary><h2><span class="step">1</span> Paste the script</h2></summary>
     <textarea id="script-input" placeholder="Paste the script here…
 
 Supported formats:
@@ -41,11 +42,13 @@ Stage directions in (parentheses) or [brackets] are detected too."></textarea>
       <button id="sample-btn">Load sample script</button>
     </div>
     <div id="pdf-status" class="notice hidden"></div>
+    </details>
   </section>
 
   <!-- ============ STEP 2: ROLES & VOICES ============ -->
   <section id="setup-section" class="card hidden">
-    <h2><span class="step">2</span> Cast &amp; voices</h2>
+    <details id="setup-details" open>
+    <summary><h2><span class="step">2</span> Cast, voices &amp; settings</h2></summary>
 
     <div id="parse-status" class="notice hidden"></div>
 
@@ -95,6 +98,7 @@ Stage directions in (parentheses) or [brackets] are detected too."></textarea>
         <input type="range" id="gap-slider" min="0.5" max="3" step="0.25" value="1">
       </label>
     </div>
+    </details>
   </section>
 
   <!-- ============ STEP 3: THE STAGE ============ -->

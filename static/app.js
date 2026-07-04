@@ -193,6 +193,8 @@ async function analyzeScript() {
   renderScriptView();
   $('setup-section').classList.remove('hidden');
   $('play-section').classList.remove('hidden');
+  $('input-details').open = false;   // script is in — tuck the input away
+  $('setup-details').open = true;
   $('setup-section').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -549,7 +551,11 @@ function startFrom(i) {
 async function play() {
   if (state.playing) { state.paused = false; updateTransport(); return; }
   const ok = await ensureEngineReady();
-  if (ok) playLoop();
+  if (!ok) return;
+  // Showtime: collapse the settings so the screen is (almost) all script.
+  $('input-details').open = false;
+  $('setup-details').open = false;
+  playLoop();
 }
 
 function pause() {
@@ -571,6 +577,7 @@ function stopAll() {
 }
 
 function updateTransport() {
+  document.body.classList.toggle('performing', state.playing);
   $('play-btn').textContent = state.playing && !state.paused ? '🎬 Performing…' : '▶ Play';
   $('play-btn').disabled = state.playing && !state.paused;
   $('pause-btn').disabled = !state.playing || state.paused;
