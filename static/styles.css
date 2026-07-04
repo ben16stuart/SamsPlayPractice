@@ -276,8 +276,11 @@ input[type="range"] { accent-color: var(--primary); }
   transition: width 0.3s ease;
 }
 
+.zoom-field { margin-left: auto; }
+
 /* ── The teleprompter ── */
 .teleprompter {
+  --zoom: 1;
   position: relative;
   margin-top: 0.9rem;
   height: 62vh;
@@ -312,10 +315,10 @@ input[type="range"] { accent-color: var(--primary); }
 .line:hover { opacity: 0.85; border-color: var(--card-edge); }
 .line .who {
   flex: 0 0 8.5em;
-  font-weight: 800; font-size: 0.78rem; letter-spacing: 0.06em;
+  font-weight: 800; font-size: calc(0.78rem * var(--zoom)); letter-spacing: 0.06em;
   padding-top: 0.25em; text-align: right;
 }
-.line .what { flex: 1; font-size: 1.02rem; }
+.line .what { flex: 1; font-size: calc(1.02rem * var(--zoom)); }
 .line.direction .what { color: var(--muted); font-style: italic; }
 .line.song .what { font-weight: 700; color: var(--red-soft); }
 .line.mine { background: var(--mine); border-color: var(--mine-border); }
@@ -327,7 +330,7 @@ input[type="range"] { accent-color: var(--primary); }
   border-color: var(--primary);
   box-shadow: 0 0 24px rgba(59, 130, 246, 0.35), 0 0 80px rgba(59, 130, 246, 0.12);
 }
-.line.current .what { font-size: 1.15rem; }
+.line.current .what { font-size: calc(1.15rem * var(--zoom)); }
 .line.mine.current {
   background: var(--mine);
   border-color: var(--red);

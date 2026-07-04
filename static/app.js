@@ -289,6 +289,7 @@ function snapshot() {
     myLineMode: $('my-line-mode').value,
     rate: $('rate-slider').value,
     gap: $('gap-slider').value,
+    zoom: $('zoom-slider').value,
     readDirections: $('read-directions').checked,
     hideMyLines: $('hide-my-lines').checked,
     index: state.index,
@@ -333,6 +334,8 @@ async function restorePlay() {
     $('gap-slider').value = s.gap || 1;
     $('rate-value').textContent = `${rate().toFixed(1)}×`;
     $('gap-value').textContent = `${gapScale().toFixed(2)}×`;
+    $('zoom-slider').value = s.zoom || 1;
+    applyZoom();
     $('read-directions').checked = !!s.readDirections;
     $('hide-my-lines').checked = !!s.hideMyLines;
 
@@ -681,6 +684,12 @@ function markCurrent(i) {
 
 const rate = () => parseFloat($('rate-slider').value);
 const gapScale = () => parseFloat($('gap-slider').value);
+const zoom = () => parseFloat($('zoom-slider').value);
+
+function applyZoom() {
+  $('script-view').style.setProperty('--zoom', zoom());
+  $('zoom-value').textContent = `${zoom().toFixed(1)}×`;
+}
 
 function beep(signal) {
   return new Promise((resolve) => {
@@ -933,6 +942,12 @@ $('play-name').onchange = async () => {
 $('read-directions').onchange = () => { renderRoles(); scheduleSave(); };
 $('hide-my-lines').onchange = () => { renderScriptView(); scheduleSave(); };
 $('rate-slider').oninput = () => { $('rate-value').textContent = `${rate().toFixed(1)}×`; scheduleSave(); };
+$('zoom-slider').oninput = () => {
+  applyZoom();
+  const cur = document.querySelector('.line.current');
+  if (cur) cur.scrollIntoView({ block: 'center' }); // keep the spot lit line in view
+  scheduleSave();
+};
 $('gap-slider').oninput = () => { $('gap-value').textContent = `${gapScale().toFixed(2)}×`; scheduleSave(); };
 
 $('play-btn').onclick = play;
